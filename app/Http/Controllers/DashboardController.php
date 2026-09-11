@@ -13,6 +13,7 @@ use App\Models\Service;
 use Inertia\Inertia;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -143,27 +144,31 @@ class DashboardController extends Controller
 
         // Priority order: PWD > Senior > Regular
         // Within each category, order by requested_at (FIFO)
-        $nextTicket = QueueRequest::where('status', 'waiting')
-            ->whereIn('service_id', $serviceIds)
-            ->orderByRaw("CASE 
-                WHEN category = 'pwd' THEN 1 
-                WHEN category = 'senior' THEN 2 
-                ELSE 3 
-            END")
-            ->orderBy('requested_at', 'asc')
-            ->first();
+        [$nextTicket, $transaction] = DB::transaction(function () use ($serviceIds) {
+            $nextTicket = QueueRequest::where('status', 'waiting')
+                ->whereIn('service_id', $serviceIds)
+                ->orderByRaw("CASE WHEN category = 'pwd' THEN 1 WHEN category = 'senior' THEN 2 ELSE 3 END")
+                ->orderBy('requested_at', 'asc')
+                ->lockForUpdate()
+                ->first();
+
+            if (!$nextTicket) {
+                return [null, null];
+            }
+
+            $nextTicket->update(['status' => 'called']);
+            $transaction = QueueTransaction::create([
+                'request_id' => $nextTicket->request_id,
+                'served_by' => Auth::user()->user_id,
+                'called_at' => Carbon::now(),
+            ]);
+
+            return [$nextTicket, $transaction];
+        });
 
         if (!$nextTicket) {
             return redirect()->back()->with('error', 'No clients waiting in line.');
         }
-
-        $nextTicket->update(['status' => 'called']);
-
-        $transaction = QueueTransaction::create([
-            'request_id' => $nextTicket->request_id,
-            'served_by' => Auth::user()->user_id,
-            'called_at' => Carbon::now(),
-        ]);
 
         Notification::create([
             'transaction_id' => $transaction->transaction_id,
@@ -267,6 +272,10 @@ class DashboardController extends Controller
     public function completeTransaction($requestId)
     {
         $ticket = $this->accessibleTicket($requestId);
+        if (!in_array($ticket->status, ['called', 'serving'], true)) {
+            return redirect()->back()->with('error', 'Only called or serving tickets can be completed.');
+        }
+
         $ticket->update(['status' => 'completed']);
 
         $transaction = QueueTransaction::where('request_id', $requestId)->first();
@@ -290,6 +299,10 @@ class DashboardController extends Controller
     public function skipTransaction($requestId)
     {
         $ticket = $this->accessibleTicket($requestId);
+        if (!in_array($ticket->status, ['called', 'serving'], true)) {
+            return redirect()->back()->with('error', 'Only called or serving tickets can be skipped.');
+        }
+
         $ticket->update(['status' => 'skipped']);
 
         AuditLog::log('queue_skip', "Skipped ticket #{$ticket->queue_number}", [
@@ -302,6 +315,10 @@ class DashboardController extends Controller
     public function cancelTransaction($requestId)
     {
         $ticket = $this->accessibleTicket($requestId);
+        if (!in_array($ticket->status, ['waiting', 'called', 'serving'], true)) {
+            return redirect()->back()->with('error', 'Only active tickets can be cancelled.');
+        }
+
         $ticket->update(['status' => 'cancelled']);
 
         AuditLog::log('queue_cancel', "Cancelled ticket #{$ticket->queue_number}", [

@@ -29,11 +29,17 @@ Route::get('/', function () {
 });
 
 Route::get('/kiosk', [QueueController::class, 'showKiosk'])->name('queue.kiosk');
-Route::post('/kiosk/generate', [QueueController::class, 'generateTicket'])->name('queue.generate');
+Route::post('/kiosk/generate', [QueueController::class, 'generateTicket'])
+    ->middleware('throttle:ticket-generation')
+    ->name('queue.generate');
 Route::get('/monitor', [QueueController::class, 'showDisplayMonitor'])->name('queue.monitor');
 
-Route::get('/queue/inquiry', [QueueController::class, 'inquiry'])->name('queue.inquiry');
-Route::post('/queue/inquiry/search', [QueueController::class, 'searchByTrackingCode'])->name('queue.inquiry.search');
+Route::get('/queue/inquiry', [QueueController::class, 'inquiry'])
+    ->middleware('throttle:tracking-lookup')
+    ->name('queue.inquiry');
+Route::post('/queue/inquiry/search', [QueueController::class, 'searchByTrackingCode'])
+    ->middleware('throttle:tracking-lookup')
+    ->name('queue.inquiry.search');
 
 /*
 |--------------------------------------------------------------------------

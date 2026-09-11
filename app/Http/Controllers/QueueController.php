@@ -12,6 +12,7 @@ use App\Models\AuditLog;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class QueueController extends Controller
 {
@@ -23,7 +24,7 @@ class QueueController extends Controller
 
         $offices = Office::where('is_active', true)
             ->whereIn('office_id', $openSessionOfficeIds)
-            ->with('services')
+            ->with(['services' => fn ($query) => $query->where('is_active', true)])
             ->get();
 
         return Inertia::render('Queue/Kiosk', [
@@ -40,7 +41,7 @@ class QueueController extends Controller
 
         $service = Service::with('office')->findOrFail($request->service_id);
 
-        abort_unless($service->office?->is_active, 404);
+        abort_unless($service->office?->is_active && $service->is_active, 404);
 
         $session = QueueSession::where('office_id', $service->office_id)
             ->where('status', 'open')
@@ -70,20 +71,34 @@ class QueueController extends Controller
             }
         }
 
-        $latestTicket = QueueRequest::whereDate('requested_at', today())->max('queue_number');
-        $nextNumber = $latestTicket ? $latestTicket + 1 : 100;
+        [$newQueue, $nextNumber, $trackingCode] = DB::transaction(function () use ($request, $currentUser) {
+            $sequenceDate = today()->toDateString();
 
-        $trackingCode = 'QV-' . strtoupper(Str::random(6));
+            DB::table('queue_sequences')->insertOrIgnore([
+                'sequence_date' => $sequenceDate,
+                'last_number' => 99,
+            ]);
 
-        $newQueue = QueueRequest::create([
-            'user_id' => $currentUser?->user_id,
-            'service_id' => $request->service_id,
-            'queue_number' => $nextNumber,
-            'tracking_code' => $trackingCode,
-            'status' => 'waiting',
-            'category' => $request->category,
-            'requested_at' => now(),
-        ]);
+            $sequence = DB::table('queue_sequences')
+                ->where('sequence_date', $sequenceDate)
+                ->lockForUpdate()
+                ->first();
+            $nextNumber = $sequence->last_number + 1;
+            DB::table('queue_sequences')->where('sequence_date', $sequenceDate)->update(['last_number' => $nextNumber]);
+
+            $trackingCode = 'QV-' . strtoupper(Str::random(6));
+            $newQueue = QueueRequest::create([
+                'user_id' => $currentUser?->user_id,
+                'service_id' => $request->service_id,
+                'queue_number' => $nextNumber,
+                'tracking_code' => $trackingCode,
+                'status' => 'waiting',
+                'category' => $request->category,
+                'requested_at' => now(),
+            ]);
+
+            return [$newQueue, $nextNumber, $trackingCode];
+        });
 
         AuditLog::log('queue_ticket_generated', "Ticket #{$nextNumber} generated", [
             'request_id' => $newQueue->request_id,
@@ -95,13 +110,12 @@ class QueueController extends Controller
             ->where('requested_at', '<=', $newQueue->requested_at)
             ->count();
 
-        $avgWait = QueueRequest::where('service_id', $request->service_id)
-            ->where('status', 'completed')
-            ->with('transaction')
-            ->get()
-            ->pluck('transaction.wait_minutes')
-            ->filter()
-            ->avg();
+        $avgWait = DB::table('queue_transactions')
+            ->join('queue_requests', 'queue_requests.request_id', '=', 'queue_transactions.request_id')
+            ->where('queue_requests.service_id', $request->service_id)
+            ->where('queue_requests.status', 'completed')
+            ->whereNotNull('queue_transactions.wait_minutes')
+            ->avg('queue_transactions.wait_minutes');
 
         $estimatedWait = $position > 0 && $avgWait ? round($position * $avgWait) : null;
 
@@ -148,6 +162,8 @@ class QueueController extends Controller
 
         abort_unless(in_array($service->service_id, $this->accessibleServiceIds(Auth::user()), true), 403);
 
+        abort_unless($service->office?->is_active && $service->is_active, 404);
+
         $session = QueueSession::where('office_id', $service->office_id)
             ->where('status', 'open')
             ->first();
@@ -156,21 +172,25 @@ class QueueController extends Controller
             return redirect()->back()->with('error', 'Queue is not currently open for this office.');
         }
 
-        $latestTicket = QueueRequest::whereDate('requested_at', today())->max('queue_number');
-        $nextNumber = $latestTicket ? $latestTicket + 1 : 100;
-        $trackingCode = 'QV-' . strtoupper(Str::random(6));
-
         $category = $request->input('category', 'regular');
-
-        $newQueue = QueueRequest::create([
-            'user_id' => null,
-            'service_id' => $request->service_id,
-            'queue_number' => $nextNumber,
-            'tracking_code' => $trackingCode,
-            'status' => 'waiting',
-            'category' => $category,
-            'requested_at' => now(),
-        ]);
+        [$newQueue, $nextNumber, $trackingCode] = DB::transaction(function () use ($request, $category) {
+            $sequenceDate = today()->toDateString();
+            DB::table('queue_sequences')->insertOrIgnore(['sequence_date' => $sequenceDate, 'last_number' => 99]);
+            $sequence = DB::table('queue_sequences')->where('sequence_date', $sequenceDate)->lockForUpdate()->first();
+            $nextNumber = $sequence->last_number + 1;
+            DB::table('queue_sequences')->where('sequence_date', $sequenceDate)->update(['last_number' => $nextNumber]);
+            $trackingCode = 'QV-' . strtoupper(Str::random(6));
+            $newQueue = QueueRequest::create([
+                'user_id' => null,
+                'service_id' => $request->service_id,
+                'queue_number' => $nextNumber,
+                'tracking_code' => $trackingCode,
+                'status' => 'waiting',
+                'category' => $category,
+                'requested_at' => now(),
+            ]);
+            return [$newQueue, $nextNumber, $trackingCode];
+        });
 
         AuditLog::log('queue_ticket_manual', "Walk-in ticket #{$nextNumber} generated", [
             'request_id' => $newQueue->request_id,
@@ -215,7 +235,7 @@ class QueueController extends Controller
     public function searchByTrackingCode(Request $request)
     {
         $request->validate([
-            'tracking_code' => 'required|string',
+            'tracking_code' => 'required|string|size:9',
         ]);
 
         [$queueRequest, $position, $estimatedWait] = $this->queueLookup($request->tracking_code);
@@ -233,7 +253,7 @@ class QueueController extends Controller
 
     private function queueLookup(string $trackingCode): array
     {
-        $queueRequest = QueueRequest::where('tracking_code', $trackingCode)
+        $queueRequest = QueueRequest::where('tracking_code', strtoupper(trim($trackingCode)))
             ->with(['service.office', 'transaction'])
             ->first();
 
@@ -246,13 +266,12 @@ class QueueController extends Controller
             ->where('requested_at', '<', $queueRequest->requested_at)
             ->count() + 1;
 
-        $avgWait = QueueRequest::where('service_id', $queueRequest->service_id)
-            ->where('status', 'completed')
-            ->with('transaction')
-            ->get()
-            ->pluck('transaction.wait_minutes')
-            ->filter()
-            ->avg();
+        $avgWait = DB::table('queue_transactions')
+            ->join('queue_requests', 'queue_requests.request_id', '=', 'queue_transactions.request_id')
+            ->where('queue_requests.service_id', $queueRequest->service_id)
+            ->where('queue_requests.status', 'completed')
+            ->whereNotNull('queue_transactions.wait_minutes')
+            ->avg('queue_transactions.wait_minutes');
 
         return [$queueRequest, $queueRequest->status === 'waiting' ? $position : null, $queueRequest->status === 'waiting' && $avgWait ? round($position * $avgWait) : null];
     }

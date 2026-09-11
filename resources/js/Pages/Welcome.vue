@@ -88,10 +88,28 @@ onMounted(() => {
             </div>
 
             <!-- STATE B: User is NOT Logged In (Guest View) -->
-            <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div v-else class="max-w-xl mx-auto bg-slate-900/70 backdrop-blur-md border border-white/10 rounded-2xl p-8 text-white text-center shadow-2xl">
+
+                <div class="w-16 h-16 bg-amber-400/20 text-amber-400 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                </div>
+                <h2 class="text-3xl font-bold mb-2">Welcome to <span class="text-amber-400">QUEUEVita</span></h2>
+                <p class="text-slate-300 text-sm leading-relaxed mb-8">
+                    Sign in to access the queue system, or create an account to get started.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <Link :href="route('login')"
+                          class="flex-1 text-center bg-amber-400 hover:bg-amber-500 text-slate-900 font-semibold py-3 px-4 rounded-xl transition shadow-lg">
+                        Login
+                    </Link>
+                    <Link v-if="canRegister" :href="route('register')"
+                          class="flex-1 text-center bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold py-3 px-4 rounded-xl transition">
+                        Register
+                    </Link>
+                </div>
 
                 <!-- 1. Student Portal Card -->
-                <div class="bg-slate-900/60 backdrop-blur-md border border-white/10 rounded-2xl p-8 text-white flex flex-col justify-between hover:border-amber-400/50 transition group">
+                <div v-if="false" class="bg-slate-900/60 backdrop-blur-md border border-white/10 rounded-2xl p-8 text-white flex flex-col justify-between hover:border-amber-400/50 transition group">
                     <div>
                         <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center mb-6 group-hover:bg-amber-400 group-hover:text-slate-900 transition">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 01-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/></svg>
@@ -108,7 +126,7 @@ onMounted(() => {
                 </div>
 
                 <!-- 2. Employee / Staff Portal Card -->
-                <div class="bg-slate-900/60 backdrop-blur-md border border-white/10 rounded-2xl p-8 text-white flex flex-col justify-between hover:border-amber-400/50 transition group">
+                <div v-if="false" class="bg-slate-900/60 backdrop-blur-md border border-white/10 rounded-2xl p-8 text-white flex flex-col justify-between hover:border-amber-400/50 transition group">
                     <div>
                         <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center mb-6 group-hover:bg-amber-400 group-hover:text-slate-900 transition">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
@@ -125,7 +143,7 @@ onMounted(() => {
                 </div>
 
                 <!-- 3. Admin Portal Card -->
-                <div class="bg-slate-900/60 backdrop-blur-md border border-white/10 rounded-2xl p-8 text-white flex flex-col justify-between hover:border-amber-400/50 transition group">
+                <div v-if="false" class="bg-slate-900/60 backdrop-blur-md border border-white/10 rounded-2xl p-8 text-white flex flex-col justify-between hover:border-amber-400/50 transition group">
                     <div>
                         <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center mb-6 group-hover:bg-amber-400 group-hover:text-slate-900 transition">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>

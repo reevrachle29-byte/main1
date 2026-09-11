@@ -6,7 +6,6 @@ const form = useForm({
     name: '',
     email: '',
     contact: '',
-    role: 'student',
     password: '',
     password_confirmation: '',
     terms: false,
@@ -103,36 +102,17 @@ const submit = () => {
                         <p v-if="form.errors.email" class="text-xs text-rose-400 font-medium animate-fade-in">{{ form.errors.email }}</p>
                     </div>
 
-                    <!-- Contact & Role Grid -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <!-- Contact Number -->
-                        <div class="space-y-1.5">
-                            <label for="contact" class="block text-xs font-bold text-slate-300 uppercase tracking-wider">Contact No.</label>
-                            <input 
-                                id="contact"
-                                v-model="form.contact"
-                                type="text" 
-                                placeholder="09123456789"
-                                class="w-full bg-slate-950/50 border border-white/10 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 transition-all outline-none"
-                            />
-                            <p v-if="form.errors.contact" class="text-xs text-rose-400 font-medium animate-fade-in">{{ form.errors.contact }}</p>
-                        </div>
-
-                        <!-- System Role Selection -->
-                        <div class="space-y-1.5">
-                            <label for="role" class="block text-xs font-bold text-slate-300 uppercase tracking-wider">Account Role</label>
-                            <select 
-                                id="role"
-                                v-model="form.role"
-                                required
-                                class="w-full bg-slate-950/50 border border-white/10 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-4 py-2.5 text-sm text-slate-100 transition-all outline-none"
-                            >
-                                <option value="student" class="bg-slate-900 text-slate-100">Student</option>
-                                <option value="staff" class="bg-slate-900 text-slate-100">Employee / Staff</option>
-                                <option value="admin" class="bg-slate-900 text-slate-100">Administrator</option>
-                            </select>
-                            <p v-if="form.errors.role" class="text-xs text-rose-400 font-medium animate-fade-in">{{ form.errors.role }}</p>
-                        </div>
+                    <!-- Contact Number -->
+                    <div class="space-y-1.5">
+                        <label for="contact" class="block text-xs font-bold text-slate-300 uppercase tracking-wider">Contact No.</label>
+                        <input 
+                            id="contact"
+                            v-model="form.contact"
+                            type="text" 
+                            placeholder="09123456789"
+                            class="w-full bg-slate-950/50 border border-white/10 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 transition-all outline-none"
+                        />
+                        <p v-if="form.errors.contact" class="text-xs text-rose-400 font-medium animate-fade-in">{{ form.errors.contact }}</p>
                     </div>
 
                     <!-- Password -->

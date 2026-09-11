@@ -23,6 +23,10 @@ const closeModal = () => { isModalOpen.value = false; form.reset(); form.clearEr
 const openCreateModal = () => { isEditing.value = false; form.reset(); form.clearErrors(); isModalOpen.value = true; };
 const openDeleteModal = (user) => { userToDelete.value = user; isDeleteModalOpen.value = true; };
 const closeDeleteModal = () => { isDeleteModalOpen.value = false; userToDelete.value = null; };
+const canAssignOffice = () => ['staff', 'employee'].includes(String(form.role).toLowerCase());
+const handleRoleChange = () => {
+    if (!canAssignOffice()) form.office_id = '';
+};
 
 const openEditModal = (user) => {
     isEditing.value = true;
@@ -34,11 +38,13 @@ const openEditModal = (user) => {
     form.password_confirmation = '';
     form.role = user.role || 'student';
     form.contact = user.contact || '';
-    form.office_id = user.office_id ?? '';
+    form.office_id = canAssignOffice() ? (user.office_id ?? '') : '';
     isModalOpen.value = true;
 };
 
 const submitForm = () => {
+    handleRoleChange();
+
     if (isEditing.value) {
         form.put(route('admin.users.update', activeUserId.value), { onSuccess: () => closeModal(), preserveScroll: true });
     } else {
@@ -154,7 +160,7 @@ const roleBadge = (role) => {
 
                     <div>
                         <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Role</label>
-                        <select v-model="form.role" class="w-full rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-amber-500">
+                        <select v-model="form.role" @change="handleRoleChange" class="w-full rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-amber-500">
                             <option value="student">Student</option>
                             <option value="staff">Staff</option>
                             <option value="admin">Administrator</option>
@@ -166,7 +172,7 @@ const roleBadge = (role) => {
                         <input v-model="form.contact" type="text" class="w-full rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-amber-500" />
                     </div>
 
-                    <div>
+                    <div v-if="canAssignOffice()">
                         <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Assigned Office</label>
                         <select v-model="form.office_id" class="w-full rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-amber-500">
                             <option value="">None</option>

@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Office;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Models\AuditLog;
 
 class UserController extends Controller
 {
@@ -34,9 +36,14 @@ class UserController extends Controller
             'office_id' => 'nullable|exists:offices,office_id',
         ]);
 
+        if (!in_array(strtolower($validated['role']), ['staff', 'employee'], true)) {
+            $validated['office_id'] = null;
+        }
+
         $validated['password'] = \Illuminate\Support\Facades\Hash::make($validated['password']);
 
         User::create($validated);
+        AuditLog::log('admin_user_created', 'Created user: ' . $validated['email'], ['role' => $validated['role']]);
 
         return redirect()->back()->with('success', 'User created successfully.');
     }
@@ -51,6 +58,10 @@ class UserController extends Controller
             'office_id' => 'nullable|exists:offices,office_id',
         ]);
 
+        if (!in_array(strtolower($validated['role']), ['staff', 'employee'], true)) {
+            $validated['office_id'] = null;
+        }
+
         if (!empty($validated['password'])) {
             $validated['password'] = \Illuminate\Support\Facades\Hash::make($validated['password']);
         } else {
@@ -58,13 +69,27 @@ class UserController extends Controller
         }
 
         $user->update($validated);
+        AuditLog::log('admin_user_updated', 'Updated user #' . $user->user_id, ['role' => $validated['role'], 'office_id' => $validated['office_id'] ?? null]);
 
         return redirect()->back()->with('success', 'User updated successfully.');
     }
 
     public function destroy(User $user)
     {
+        if ((int) $user->user_id === (int) Auth::id()) {
+            return redirect()->back()->with('error', 'You cannot delete your own administrator account.');
+        }
+
+        if ($user->isAdmin() && User::whereIn('role', ['admin', 'administrator'])->count() <= 1) {
+            return redirect()->back()->with('error', 'The last administrator cannot be deleted.');
+        }
+
+        if ($user->queueRequests()->whereIn('status', ['waiting', 'called', 'serving'])->exists()) {
+            return redirect()->back()->with('error', 'Users with active queue tickets cannot be deleted.');
+        }
+
         $user->delete();
+        AuditLog::log('admin_user_deleted', 'Deleted user #' . $user->user_id, ['email' => $user->email]);
 
         return redirect()->back()->with('success', 'User deleted successfully.');
     }

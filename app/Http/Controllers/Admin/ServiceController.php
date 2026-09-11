@@ -7,6 +7,7 @@ use App\Models\Service;
 use App\Models\Office;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Models\AuditLog;
 
 class ServiceController extends Controller
 {
@@ -35,6 +36,7 @@ class ServiceController extends Controller
         ]);
 
         Service::create($validated);
+        AuditLog::log('admin_service_created', 'Created service: ' . $validated['service_name'], $validated);
 
         return redirect()->back()->with('success', 'Service created successfully.');
     }
@@ -48,14 +50,16 @@ class ServiceController extends Controller
         ]);
 
         $service->update($validated);
+        AuditLog::log('admin_service_updated', 'Updated service #' . $service->service_id, $validated);
 
         return redirect()->back()->with('success', 'Service updated successfully.');
     }
 
     public function destroy(Service $service)
     {
-        $service->delete();
+        $service->update(['is_active' => false]);
+        AuditLog::log('admin_service_deactivated', 'Deactivated service #' . $service->service_id);
 
-        return redirect()->back()->with('success', 'Service deleted successfully.');
+        return redirect()->back()->with('success', 'Service deactivated. Historical queue data was preserved.');
     }
 }
