@@ -209,20 +209,22 @@ const submitManual = () => {
         <AudioNotification ref="audioRef" />
 
         <div v-if="walkInTicket" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-            <div class="walk-in-print-ticket w-full max-w-sm rounded-2xl border border-slate-700 bg-white p-6 text-center text-slate-900 shadow-2xl">
-                <p class="text-xs font-black uppercase tracking-[0.25em] text-slate-500">CPAC Queue Ticket</p>
-                <p class="mt-4 text-7xl font-black tracking-tight">#{{ walkInTicket.queue_number }}</p>
-                <div class="mt-4 space-y-2 border-y border-slate-200 py-4 text-sm">
-                    <p><span class="font-bold">Office:</span> {{ walkInTicket.office }}</p>
-                    <p><span class="font-bold">Service:</span> {{ walkInTicket.service }}</p>
-                    <p><span class="font-bold">Position:</span> {{ walkInTicket.position }}</p>
-                    <p><span class="font-bold">Estimated wait:</span> ~{{ walkInTicket.estimated_wait }} minutes</p>
-                </div>
-                <p class="mt-4 text-xs text-slate-500">Tracking code</p>
-                <p class="font-mono text-lg font-bold tracking-widest">{{ walkInTicket.tracking_code }}</p>
-                <div class="mt-6 flex gap-3 print:hidden">
-                    <button type="button" @click="printWalkInTicket" class="flex-1 rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 hover:bg-amber-400">Print Ticket</button>
-                    <button type="button" @click="hideWalkInTicket = true" class="rounded-xl bg-slate-200 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-300">Close</button>
+            <div class="receipt-ticket-container">
+                <div class="walk-in-print-ticket w-full max-w-sm rounded-2xl border border-slate-700 bg-white p-6 text-center text-slate-900 shadow-2xl">
+                    <p class="text-xs font-black uppercase tracking-[0.25em] text-slate-500">CPAC Queue Ticket</p>
+                    <p class="mt-4 text-7xl font-black tracking-tight">#{{ walkInTicket.queue_number }}</p>
+                    <div class="mt-4 space-y-2 border-y border-slate-200 py-4 text-sm">
+                        <p><span class="font-bold">Office:</span> {{ walkInTicket.office }}</p>
+                        <p><span class="font-bold">Service:</span> {{ walkInTicket.service }}</p>
+                        <p><span class="font-bold">Position:</span> {{ walkInTicket.position }}</p>
+                        <p><span class="font-bold">Estimated wait:</span> ~{{ walkInTicket.estimated_wait }} minutes</p>
+                    </div>
+                    <p class="mt-4 text-xs text-slate-500">Tracking code</p>
+                    <p class="font-mono text-lg font-bold tracking-widest">{{ walkInTicket.tracking_code }}</p>
+                    <div class="mt-6 flex gap-3 print:hidden">
+                        <button type="button" @click="printWalkInTicket" class="flex-1 rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 hover:bg-amber-400">Print Ticket</button>
+                        <button type="button" @click="hideWalkInTicket = true" class="rounded-xl bg-slate-200 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-300">Close</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -444,24 +446,80 @@ const submitManual = () => {
 </template>
 
 <style scoped>
+.receipt-ticket-container {
+    display: block;
+}
+
 @media print {
-    :global(body) * {
-        visibility: hidden;
+    @page {
+        margin: 0;
+        size: 80mm auto;
     }
 
-    .walk-in-print-ticket,
-    .walk-in-print-ticket * {
-        visibility: visible;
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+    }
+
+    body * {
+        display: none !important;
+    }
+
+    .receipt-ticket-container,
+    .receipt-ticket-container * {
+        display: block !important;
+        visibility: visible !important;
+    }
+
+    .receipt-ticket-container {
+        position: static !important;
+        width: 80mm !important;
+        max-width: 80mm !important;
+        min-width: 80mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: transparent !important;
     }
 
     .walk-in-print-ticket {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        max-width: none;
-        border: 0;
-        box-shadow: none;
+        width: 80mm !important;
+        max-width: 80mm !important;
+        min-width: 80mm !important;
+        margin: 0 !important;
+        padding: 10px !important;
+        border: 1px solid #111827 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        background: #fff !important;
+        color: #111827 !important;
+        text-align: center !important;
+    }
+
+    .walk-in-print-ticket > * {
+        color: #111827 !important;
+        background: transparent !important;
+    }
+
+    .walk-in-print-ticket .text-7xl {
+        font-size: 32px !important;
+        line-height: 1.1 !important;
+    }
+
+    .walk-in-print-ticket .text-xs {
+        font-size: 9px !important;
+    }
+
+    .walk-in-print-ticket .text-sm {
+        font-size: 10px !important;
+    }
+
+    .walk-in-print-ticket .font-mono {
+        font-size: 11px !important;
+    }
+
+    .walk-in-print-ticket .print\:hidden {
+        display: none !important;
     }
 }
 </style>
