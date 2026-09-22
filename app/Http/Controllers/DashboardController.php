@@ -41,6 +41,48 @@ class DashboardController extends Controller
             ->orderBy('requested_at', 'desc')
             ->get();
 
+        $myQueueRequests->each(function (QueueRequest $ticket) {
+            if (!in_array($ticket->status, ['waiting', 'called', 'serving'], true)) {
+                return;
+            }
+
+            if ($ticket->status !== 'waiting') {
+                $ticket->queue_position = 0;
+                $ticket->estimated_wait_minutes = 0;
+                return;
+            }
+
+            $priority = match ($ticket->category) {
+                'pwd', 'senior' => 1,
+                default => 2,
+            };
+
+            $ahead = QueueRequest::where('service_id', $ticket->service_id)
+                ->where('status', 'waiting')
+                ->where(function ($query) use ($ticket, $priority) {
+                    $query->whereRaw(
+                        "CASE WHEN category IN ('pwd', 'senior') THEN 1 ELSE 2 END < ?",
+                        [$priority]
+                    )->orWhere(function ($samePriority) use ($ticket, $priority) {
+                        $samePriority->whereRaw(
+                            "CASE WHEN category IN ('pwd', 'senior') THEN 1 ELSE 2 END = ?",
+                            [$priority]
+                        )->where('requested_at', '<', $ticket->requested_at);
+                    });
+                })
+                ->count();
+
+            $averageWait = DB::table('queue_transactions')
+                ->join('queue_requests', 'queue_requests.request_id', '=', 'queue_transactions.request_id')
+                ->where('queue_requests.service_id', $ticket->service_id)
+                ->where('queue_requests.status', 'completed')
+                ->whereNotNull('queue_transactions.wait_minutes')
+                ->avg('queue_transactions.wait_minutes');
+
+            $ticket->queue_position = $ahead + 1;
+            $ticket->estimated_wait_minutes = round(($ahead + 1) * ($averageWait ?: 10));
+        });
+
         $waitingCount = QueueRequest::where('status', 'waiting')->count();
         $servingCount = QueueRequest::whereIn('status', ['called', 'serving'])->count();
 
@@ -127,14 +169,29 @@ class DashboardController extends Controller
             ->with('service')
             ->get();
 
-        $selectedOffice = $offices->first();
+        $recentTicketHistory = QueueRequest::whereIn('service_id', $serviceIds)
+            ->whereIn('status', ['completed', 'skipped', 'cancelled'])
+            ->with('service')
+            ->orderByDesc('requested_at')
+            ->take(10)
+            ->get();
+
+        $selectedOffice = $targetOfficeId ? $offices->first() : null;
+
+        $officeNotifications = Notification::whereIn('user_id', $offices->pluck('user_id')->filter())
+            ->where('type', 'office')
+            ->latest('sent_at')
+            ->take(10)
+            ->get();
 
         return Inertia::render('Dashboard/Staff', [
             'waitingQueue' => $waitingQueue,
             'servingQueue' => $servingQueue,
+            'recentTicketHistory' => $recentTicketHistory,
             'offices' => $offices,
             'openSessions' => $openSessions,
             'selectedOffice' => $selectedOffice,
+            'officeNotifications' => $officeNotifications,
         ]);
     }
 
@@ -147,7 +204,7 @@ class DashboardController extends Controller
         [$nextTicket, $transaction] = DB::transaction(function () use ($serviceIds) {
             $nextTicket = QueueRequest::where('status', 'waiting')
                 ->whereIn('service_id', $serviceIds)
-                ->orderByRaw("CASE WHEN category = 'pwd' THEN 1 WHEN category = 'senior' THEN 2 ELSE 3 END")
+                ->orderByRaw("CASE WHEN category IN ('pwd', 'senior') THEN 1 ELSE 2 END")
                 ->orderBy('requested_at', 'asc')
                 ->lockForUpdate()
                 ->first();
@@ -198,7 +255,7 @@ class DashboardController extends Controller
 
         $upcomingTickets = QueueRequest::where('status', 'waiting')
             ->whereIn('service_id', $serviceIds)
-            ->orderByRaw("CASE WHEN category = 'pwd' THEN 1 WHEN category = 'senior' THEN 2 ELSE 3 END")
+            ->orderByRaw("CASE WHEN category IN ('pwd', 'senior') THEN 1 ELSE 2 END")
             ->orderBy('requested_at')
             ->take(5)
             ->get();

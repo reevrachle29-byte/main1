@@ -1,11 +1,14 @@
 <script setup>
 import { useForm, Link } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
 const form = useForm({
     email: '',
     password: '',
     remember: false,
 });
+
+const showPassword = ref(false);
 
 const handleLogin = () => {
     form.post(route('login'), {
@@ -40,9 +43,9 @@ const handleLogin = () => {
             <!-- Logo Section -->
             <div class="text-center mb-8">
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-500 shadow-xl shadow-amber-500/20 mb-4">
-                    <span class="font-black text-slate-950 text-3xl">V</span>
+                    <span class="font-black text-slate-950 text-3xl">Q</span>
                 </div>
-                <h2 class="text-3xl font-black tracking-tight text-white leading-none">QUEUE<span class="text-amber-400">Vita</span></h2>
+                <h2 class="text-3xl font-black tracking-tight text-white leading-none">QUEUE-MMS</h2>
                 <p class="text-slate-400 text-xs mt-2 uppercase tracking-widest font-semibold">Central Philippine Adventist College</p>
             </div>
 
@@ -59,18 +62,19 @@ const handleLogin = () => {
                 </div>
 
                 <form @submit.prevent="handleLogin" class="space-y-5">
-                    <!-- Email / Identifier -->
+                    <!-- Email -->
                     <div class="space-y-2">
-                        <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">Email or ID</label>
+                        <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">Email</label>
                         <div class="relative">
                             <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                             </span>
                             <input 
                                 v-model="form.email"
-                                type="text" 
+                                type="email" 
                                 required
                                 autofocus
+                                autocomplete="email"
                                 placeholder="e.g. admin@example.com"
                                 class="w-full bg-slate-950/50 border border-white/10 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-100 placeholder-slate-600 transition-all outline-none"
                             />
@@ -81,7 +85,7 @@ const handleLogin = () => {
                     <div class="space-y-2">
                         <div class="flex justify-between items-center">
                             <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">Password</label>
-                            <Link :href="route('password.request')" class="text-xs font-semibold text-amber-400 hover:text-amber-300 transition">Forgot?</Link>
+                            <Link :href="route('password.request')" class="text-xs font-semibold text-amber-400 hover:text-amber-300 transition">Forgot Password</Link>
                         </div>
                         <div class="relative">
                             <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
@@ -89,11 +93,18 @@ const handleLogin = () => {
                             </span>
                             <input 
                                 v-model="form.password"
-                                type="password" 
+                                :type="showPassword ? 'text' : 'password'" 
                                 required
                                 placeholder="••••••••"
-                                class="w-full bg-slate-950/50 border border-white/10 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-100 placeholder-slate-600 transition-all outline-none"
+                                class="w-full bg-slate-950/50 border border-white/10 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl pl-10 pr-16 py-3 text-sm text-slate-100 placeholder-slate-600 transition-all outline-none"
                             />
+                            <button
+                                type="button"
+                                @click="showPassword = !showPassword"
+                                class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-xs font-bold text-slate-400 hover:text-amber-400 transition"
+                            >
+                                {{ showPassword ? 'Hide' : 'Show' }}
+                            </button>
                         </div>
                     </div>
 
@@ -132,11 +143,11 @@ const handleLogin = () => {
             <!-- Footer Meta/Copyright -->
             <div class="text-center mt-8 space-y-2 text-[10px] text-slate-600 font-semibold tracking-wide uppercase">
                 <div class="flex items-center justify-center gap-4">
-                    <a href="#" class="hover:text-slate-400 transition">Privacy Policy</a>
+                    <a :href="route('policy.show')" class="hover:text-slate-400 transition">Privacy Policy</a>
                     <span>•</span>
-                    <a href="#" class="hover:text-slate-400 transition">Terms of Use</a>
+                    <a :href="route('terms.show')" class="hover:text-slate-400 transition">Terms of Use</a>
                 </div>
-                <p>&copy; 2026 CPAC. All Rights Reserved.</p>
+                <p>&copy; 2026 QUEUE-MMS. All Rights Reserved.</p>
             </div>
 
         </div>

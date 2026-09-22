@@ -33,6 +33,30 @@ class ReportsController extends Controller
             $query->where('status', $request->status);
         }
 
+        $officeBreakdownQuery = QueueRequest::query()
+            ->join('services', 'queue_requests.service_id', '=', 'services.service_id')
+            ->join('offices', 'services.office_id', '=', 'offices.office_id')
+            ->select('offices.office_id', 'offices.name')
+            ->selectRaw('COUNT(queue_requests.request_id) as total')
+            ->selectRaw("SUM(CASE WHEN queue_requests.status = 'waiting' THEN 1 ELSE 0 END) as waiting")
+            ->selectRaw("SUM(CASE WHEN queue_requests.status = 'completed' THEN 1 ELSE 0 END) as completed")
+            ->selectRaw("SUM(CASE WHEN queue_requests.status = 'cancelled' THEN 1 ELSE 0 END) as cancelled")
+            ->selectRaw("SUM(CASE WHEN queue_requests.status = 'skipped' THEN 1 ELSE 0 END) as skipped")
+            ->when($request->filled('office_id'), fn ($report) => $report->where('services.office_id', $request->office_id))
+            ->when($request->filled('date_from'), fn ($report) => $report->whereDate('queue_requests.requested_at', '>=', $request->date_from))
+            ->when($request->filled('date_to'), fn ($report) => $report->whereDate('queue_requests.requested_at', '<=', $request->date_to))
+            ->when($request->filled('status'), fn ($report) => $report->where('queue_requests.status', $request->status))
+            ->groupBy('offices.office_id', 'offices.name')
+            ->orderByDesc('total');
+
+        $officeBreakdown = $officeBreakdownQuery->get();
+
+        $statusBreakdown = (clone $query)
+            ->select('status')
+            ->selectRaw('COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
         $queueRequests = $query->orderBy('requested_at', 'desc')->paginate(25)->withQueryString();
 
         $today = Carbon::today();
@@ -56,6 +80,8 @@ class ReportsController extends Controller
 
         return Inertia::render('Admin/Reports/Index', [
             'queueRequests' => $queueRequests,
+            'officeBreakdown' => $officeBreakdown,
+            'statusBreakdown' => $statusBreakdown,
             'stats' => $stats,
             'offices' => $offices,
             'recentAuditLogs' => $recentAuditLogs,

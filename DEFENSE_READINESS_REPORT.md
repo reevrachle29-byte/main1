@@ -1,4 +1,4 @@
-# QueueVita Capstone - Defense Readiness Report
+# QUEUE-MMS Capstone - Defense Readiness Report
 **Date Generated:** 2026-08-18  
 **Project Status:** ⚠️ NEEDS FIXES BEFORE DEFENSE
 
@@ -6,7 +6,7 @@
 
 ## EXECUTIVE SUMMARY
 
-Your QueueVita queue management system is **well-structured and feature-complete** for the core functionality, but has **3 critical test failures** and **lacks supporting documentation** needed for defense.
+Your QUEUE-MMS queue management system is **well-structured and feature-complete** for the core functionality, but has **3 critical test failures** and **lacks supporting documentation** needed for defense.
 
 ### Quick Stats
 - **Tests Passing:** 23 ✅

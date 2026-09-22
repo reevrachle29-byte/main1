@@ -7,6 +7,7 @@ const form = useForm({
 });
 
 const passwordInput = ref(null);
+const showPassword = ref(false);
 
 const submit = () => {
     form.post(route('password.confirm'), {
@@ -35,7 +36,7 @@ const submit = () => {
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-500 shadow-xl shadow-amber-500/20 mb-4">
                     <span class="font-black text-slate-950 text-3xl">Q</span>
                 </div>
-                <h2 class="text-3xl font-black tracking-tight text-white">QUEUE<span class="text-amber-400">Vita</span></h2>
+                <h2 class="text-3xl font-black tracking-tight text-white">QUEUE-MMS</h2>
             </div>
 
             <div class="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
@@ -47,15 +48,20 @@ const submit = () => {
                 <form @submit.prevent="submit" class="space-y-5">
                     <div>
                         <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Password</label>
-                        <input
-                            ref="passwordInput"
-                            v-model="form.password"
-                            type="password"
-                            required
-                            autocomplete="current-password"
-                            class="w-full bg-slate-950/50 border border-white/10 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-600 transition-all outline-none"
-                            placeholder="Enter your password"
-                        />
+                        <div class="relative">
+                            <input
+                                ref="passwordInput"
+                                v-model="form.password"
+                                :type="showPassword ? 'text' : 'password'"
+                                required
+                                autocomplete="current-password"
+                                class="w-full bg-slate-950/50 border border-white/10 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-4 pr-16 py-3 text-sm text-slate-100 placeholder-slate-600 transition-all outline-none"
+                                placeholder="Enter your password"
+                            />
+                            <button type="button" @click="showPassword = !showPassword" class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-xs font-bold text-slate-400 hover:text-amber-400 transition">
+                                {{ showPassword ? 'Hide' : 'Show' }}
+                            </button>
+                        </div>
                         <p v-if="form.errors.password" class="text-rose-400 text-xs mt-1.5">{{ form.errors.password }}</p>
                     </div>
 

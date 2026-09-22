@@ -29,7 +29,7 @@ const submit = () => {
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-500 shadow-xl shadow-amber-500/20 mb-4">
                     <span class="font-black text-slate-950 text-3xl">Q</span>
                 </div>
-                <h2 class="text-3xl font-black tracking-tight text-white">QUEUE<span class="text-amber-400">Vita</span></h2>
+                <h2 class="text-3xl font-black tracking-tight text-white">QUEUE-MMS</h2>
                 <p class="text-slate-400 text-xs mt-2 uppercase tracking-widest font-semibold">Central Philippine Adventist College</p>
             </div>
 

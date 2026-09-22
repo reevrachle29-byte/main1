@@ -48,9 +48,9 @@ const submit = () => {
             <!-- Branding Header -->
             <div class="text-center mb-8">
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-500 shadow-xl shadow-amber-500/20 mb-4">
-                    <span class="font-black text-slate-950 text-3xl">V</span>
+                    <span class="font-black text-slate-950 text-3xl">Q</span>
                 </div>
-                <h2 class="text-3xl font-black tracking-tight text-white leading-none">QUEUE<span class="text-amber-400">Vita</span></h2>
+                <h2 class="text-3xl font-black tracking-tight text-white leading-none">QUEUE-MMS</h2>
                 <p class="text-slate-400 text-xs mt-2 uppercase tracking-widest font-semibold">Central Philippine Adventist College</p>
             </div>
 
@@ -203,11 +203,11 @@ const submit = () => {
             <!-- Footer Meta & Copyright -->
             <div class="text-center mt-8 space-y-2 text-[10px] text-slate-600 font-semibold tracking-wide uppercase">
                 <div class="flex items-center justify-center gap-4">
-                    <a href="#" class="hover:text-slate-400 transition">Privacy Policy</a>
+                    <a :href="route('policy.show')" class="hover:text-slate-400 transition">Privacy Policy</a>
                     <span>•</span>
-                    <a href="#" class="hover:text-slate-400 transition">Terms of Use</a>
+                    <a :href="route('terms.show')" class="hover:text-slate-400 transition">Terms of Use</a>
                 </div>
-                <p>&copy; 2026 CPAC. All Rights Reserved.</p>
+                <p>&copy; 2026 QUEUE-MMS. All Rights Reserved.</p>
             </div>
 
         </div>

@@ -51,7 +51,7 @@ const statusColor = (status) => {
                     <span class="font-black text-slate-950 text-2xl tracking-tighter">Q</span>
                 </div>
                 <div>
-                    <h1 class="font-black text-xl leading-none tracking-tight text-white">QUEUE<span class="text-amber-400">Vita</span></h1>
+                    <h1 class="font-black text-xl leading-none tracking-tight text-white">QUEUE-MMS</h1>
                     <span class="text-[11px] text-slate-400 font-medium tracking-wide">Queue Inquiry</span>
                 </div>
             </div>
@@ -143,7 +143,7 @@ const statusColor = (status) => {
         </main>
 
         <footer class="relative z-10 w-full max-w-7xl mx-auto px-6 py-6 border-t border-slate-800/80 text-center text-xs text-slate-500">
-            <p>&copy; 2026 Central Philippine Adventist College. All Rights Reserved.</p>
+            <p>&copy; 2026 QUEUE-MMS. All Rights Reserved.</p>
         </footer>
     </div>
 </template>

@@ -1,6 +1,6 @@
-# QUEUEVita
+# QUEUE-MMS
 
-QUEUEVita is a Laravel and Inertia/Vue queue management system for campus offices. Students can request and track queue tickets, while staff manage service queues and administrators manage users, offices, services, and reports.
+QUEUE-MMS is a Laravel and Inertia/Vue queue management system for campus offices. Students can request and track queue tickets, while staff manage service queues and administrators manage users, offices, services, and reports.
 
 ## Requirements
 
@@ -36,7 +36,10 @@ This starts the Laravel server, queue listener, log viewer, and Vite development
 - Only Staff and Employee accounts can be assigned to an office.
 - Only active services in an open office session can receive tickets.
 - Queue numbers restart at 100 each day and are allocated through a locked daily sequence.
+- Students may hold up to 2 active tickets at a time across the system.
+- Ticket categories follow the queue rules: `pwd`, `senior`, and `regular` (with a legacy `priority` label still appearing in some UI text for compatibility).
 - Staff can call, complete, skip, cancel, and recall tickets within their assigned office.
+- The Call Next rule is PWD first, then Senior, then Regular, with FIFO ordering within each category.
 
 ## Testing
 

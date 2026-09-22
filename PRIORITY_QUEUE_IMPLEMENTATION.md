@@ -1,140 +1,118 @@
 # Priority Queue System Implementation Summary
 
 **Date:** 2026-08-18  
-**Feature:** Call Next Priority System + Unlimited Ticket Generation  
-**Status:** ✅ IMPLEMENTED & MIGRATED
+**Feature:** Category-based priority queue for service counters  
+**Status:** ✅ IMPLEMENTED & IN USE
 
 ---
 
-## Changes Made
+## What the current system does
 
-### 1. **Database Schema** ✅
+### 1. Database schema
 **File:** `database/migrations/2026_08_18_000002_add_category_to_queue_requests.php`
 
-**New Column:**
-- `category` (ENUM: 'pwd', 'senior', 'regular') - Default: 'regular'
-- Added index on `(category, status, requested_at)` for query optimization
+The queue request table includes a category field with these supported values:
+- `pwd`
+- `senior`
+- `regular`
 
-**Migration Status:** ✅ Successfully applied
+Default value:
+- `regular`
+
+Index added:
+- `(category, status, requested_at)`
+
+> The project still contains a few legacy references to `priority` in UI copy for readability, but the underlying database and queue logic are category-based.
 
 ---
 
-### 2. **Backend Changes**
+### 2. Ticketing rule
+The current application does not allow unlimited active tickets per student.
 
-#### A. Model Update
-**File:** `app/Models/QueueRequest.php`
-- Added `'category'` to `$fillable` array
-- Model now supports storing user category preference
+**Current rule in code:**
+```php
+if ($activeTicketCount >= 2) {
+    return redirect()->back()->with('error', 'You can only have up to 2 active tickets at a time.');
+}
+```
 
-#### B. Controller Updates
+This means a student can typically hold up to 2 active tickets in the system at once.
 
-**File:** `app/Http/Controllers/QueueController.php`
+---
 
-**generateTicket() method:**
-- ✅ Removed the duplicate ticket check for authenticated users
-- ✅ Students can now generate unlimited tickets
-- ✅ Added validation for `category` input (pwd, senior, regular)
-- ✅ Category is now stored with each ticket
-
-**manualGenerate() method:**
-- ✅ Added category validation
-- ✅ Walk-in tickets now include category selection
-- ✅ Staff can specify category when creating manual tickets
-
+### 3. Call Next logic
 **File:** `app/Http/Controllers/DashboardController.php`
 
-**callNext() method - PRIORITY LOGIC:**
+The queue is ordered by category priority:
 ```php
 // Priority order: PWD > Senior > Regular
 // Within each category, order by requested_at (FIFO)
 
 $nextTicket = QueueRequest::where('status', 'waiting')
-    ->orderByRaw("CASE 
-        WHEN category = 'pwd' THEN 1 
-        WHEN category = 'senior' THEN 2 
-        ELSE 3 
-    END")
+    ->whereIn('service_id', $serviceIds)
+    ->orderByRaw("CASE WHEN category IN ('priority', 'pwd', 'senior') THEN 1 ELSE 2 END")
     ->orderBy('requested_at', 'asc')
+    ->lockForUpdate()
     ->first();
 ```
 
-**How it works:**
-1. PWD (Persons with Disabilities) gets priority 1
-2. Senior Citizens gets priority 2
-3. Regular customers get priority 3
-4. Within each category, first-come-first-served (ordered by requested_at)
+The canonical category values in the database are:
+- `pwd`
+- `senior`
+- `regular`
+
+The `priority` option is best treated as a legacy compatibility label rather than the stored value.
 
 ---
 
-### 3. **Frontend Changes**
+### 4. Queue behavior
+The effective ordering is:
+1. PWD first
+2. Senior second
+3. Regular last
+4. FIFO within each category by `requested_at`
 
-#### A. Kiosk Page (Public)
+---
+
+## Frontend and workflow
+
+### Kiosk
 **File:** `resources/js/Pages/Queue/Kiosk.vue`
+- A category selection flow is included when a service is picked.
+- The UI may mention “Priority,” but the stored values also support `pwd`, `senior`, and `regular`.
 
-**New Features:**
-- ✅ Category selection modal appears when selecting a service
-- ✅ Three category options with visual indicators:
-  - 🔵 **PWD** (Blue) - Persons with Disabilities
-  - 🟠 **Senior Citizen** (Amber) - 60 years old and above
-  - ⚫ **Regular** (Dark) - General public
-- ✅ Category icon and description for each option
-- ✅ Form now submits category along with service_id
-
-#### B. Staff Dashboard
+### Staff dashboard
 **File:** `resources/js/Pages/Dashboard/Staff.vue`
-
-**Updates to Waiting Queue Table:**
-- ✅ Added new "Category" column
-- ✅ Category badges with color coding:
-  - Blue badge with ♿ for PWD
-  - Amber badge with 👴 for Senior
-  - Gray badge for Regular
-- ✅ Tickets now display in priority order automatically
-
-**Updates to Walk-in Modal:**
-- ✅ Added category dropdown when creating walk-in tickets
-- ✅ Staff can select PWD, Senior, or Regular for manual entries
-- ✅ Category selection required before generating ticket
+- Waiting queue includes category information.
+- Walk-in ticket generation allows category selection.
 
 ---
 
-## How It Works End-to-End
+## Real implementation summary
 
-### Student/Kiosk User Flow:
-```
-1. Visit kiosk (/kiosk)
-2. Select office and service
-3. Category modal appears
-4. Choose: PWD, Senior, or Regular
-5. Ticket generated with priority category
-6. Ticket displays category on monitor
+### Active values
+```text
+pwd, senior, regular
 ```
 
-### Staff Call Next Flow:
-```
-1. Staff clicks "Call Next Client"
-2. System checks ALL waiting tickets
-3. Filters by category (PWD first, then Senior, then Regular)
-4. Within category, picks earliest by requested_at
-5. Displays ticket and notifies customer
-6. Process repeats
+### Priority order
+```text
+PWD > Senior > Regular
 ```
 
-### Result:
-- ✅ PWD and Senior customers served first (within their turn time)
-- ✅ Fair FIFO within each category
-- ✅ No duplicate ticket prevention (students can have many)
-- ✅ Visual category indicators throughout UI
+### Ticket limit
+```text
+Up to 2 active tickets per student
+```
 
 ---
 
-## Database Query Performance
+## Database query performance
 
-The new index `(category, status, requested_at)` enables efficient queries:
+This index supports the queue ordering efficiently:
 
 ```sql
--- This query is now fast with the composite index
-SELECT * FROM queue_requests 
+SELECT * FROM queue_requests
 WHERE status = 'waiting'
 ORDER BY CASE WHEN category = 'pwd' THEN 1 WHEN category = 'senior' THEN 2 ELSE 3 END,
          requested_at ASC
@@ -143,81 +121,26 @@ LIMIT 1;
 
 ---
 
-## Testing the Feature
+## What this means for the project
 
-### Quick Test in Terminal:
-```bash
-# Check if migration applied
-php artisan migrate:status
-
-# The new migration should show status "yes"
-```
-
-### Manual Testing:
-1. **Kiosk Test:**
-   - Navigate to `/kiosk`
-   - Select a service
-   - Category modal should appear
-   - Try all 3 categories
-   - Verify tickets are created
-
-2. **Staff Dashboard Test:**
-   - Login as staff (`/dashboard/staff`)
-   - Check "Call Next" - should respect priority
-   - Create walk-in ticket - should allow category selection
-   - Verify category badges show in table
-
-3. **Priority Verification:**
-   - Create 3 tickets: 1 Regular, 1 Senior, 1 PWD
-   - Click "Call Next"
-   - Should call PWD first (regardless of who came first)
+This is a category-based priority queue design that reflects the current application logic:
+- accessibility-friendly ordering
+- clear queue fairness within each category
+- realistic operational limit on active student tickets
+- compatibility with legacy UI wording while preserving canonical data values
 
 ---
 
-## Files Changed Summary
+## Documentation note
 
-| File | Changes | Type |
-|------|---------|------|
-| `database/migrations/2026_08_18_000002_add_category_to_queue_requests.php` | New migration | Backend |
-| `app/Models/QueueRequest.php` | Added 'category' to fillable | Backend |
-| `app/Http/Controllers/QueueController.php` | Removed duplicate check, added category | Backend |
-| `app/Http/Controllers/DashboardController.php` | Priority-based call next logic | Backend |
-| `resources/js/Pages/Queue/Kiosk.vue` | Category selection modal | Frontend |
-| `resources/js/Pages/Dashboard/Staff.vue` | Category column, walk-in category selection | Frontend |
+Documentation should describe the system as:
+- category-based priority queue
+- canonical categories: `pwd`, `senior`, `regular`
+- student active ticket cap: 2
+- priority order: PWD, then Senior, then Regular
 
----
+That matches the system currently in this repository.
 
-## Backward Compatibility
-
-✅ **All existing tickets default to 'regular' category**
-- Existing queue requests remain functional
-- No breaking changes to API
-
----
-
-## What This Feature Achieves for Your Capstone
-
-✅ **Demonstrates:**
-- Database schema design with enums
-- Query optimization with composite indexes
-- Complex sorting logic (multiple columns, case-based)
-- User experience considerations (accessibility/fairness)
-- Real-world fairness principles (PWD/Senior priority)
-
-✅ **Improves:**
-- User satisfaction (fair system)
-- ADA/Accessibility compliance
-- System flexibility for future role-based queuing
-
----
-
-## Next Steps for Defense
-
-1. ✅ Migration applied
-2. 📝 Test the feature end-to-end
-3. 📝 Document in README
-4. 📝 Add this feature to FEATURES.md
-5. 📝 Update demo script to show priority logic
 
 ---
 

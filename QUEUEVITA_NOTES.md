@@ -1,4 +1,4 @@
-# QUEUEVITA Project Notes
+# QUEUE-MMS Project Notes
 
 ## Date
 2026-08-17

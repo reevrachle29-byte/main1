@@ -5,6 +5,8 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     queueRequests: { type: Object, default: () => ({ data: [], links: [] }) },
+    officeBreakdown: { type: Array, default: () => [] },
+    statusBreakdown: { type: Object, default: () => ({}) },
     stats: { type: Object, default: () => ({}) },
     offices: { type: Array, default: () => [] },
     recentAuditLogs: { type: Array, default: () => [] },
@@ -43,6 +45,26 @@ const statusColor = (status) => {
 };
 
 const activeTab = ref('queue');
+
+const statusChartRows = computed(() => {
+    const statuses = [
+        { key: 'waiting', label: 'Waiting', color: 'bg-yellow-400' },
+        { key: 'called', label: 'Called', color: 'bg-blue-400' },
+        { key: 'serving', label: 'Serving', color: 'bg-amber-400' },
+        { key: 'completed', label: 'Completed', color: 'bg-teal-400' },
+        { key: 'cancelled', label: 'Cancelled', color: 'bg-red-400' },
+        { key: 'skipped', label: 'Skipped', color: 'bg-orange-400' },
+    ].map(status => ({
+        ...status,
+        total: Number(props.statusBreakdown?.[status.key] || 0),
+    })).filter(status => status.total > 0);
+    const maximum = Math.max(...statuses.map(status => status.total), 1);
+
+    return statuses.map(status => ({
+        ...status,
+        width: `${(status.total / maximum) * 100}%`,
+    }));
+});
 </script>
 
 <template>
@@ -76,11 +98,75 @@ const activeTab = ref('queue');
 
                 <!-- Tabs -->
                 <div class="flex gap-1 bg-slate-900/60 p-1 rounded-xl border border-slate-800/80 w-fit">
-                    <button @click="activeTab = 'queue'" :class="activeTab === 'queue' ? 'bg-amber-500/10 text-amber-400' : 'text-slate-500 hover:text-white'" class="px-4 py-2 text-sm font-bold rounded-lg transition">Queue History</button>
+                    <button @click="activeTab = 'queue'" :class="activeTab === 'queue' ? 'bg-amber-500/10 text-amber-400' : 'text-slate-500 hover:text-white'" class="px-4 py-2 text-sm font-bold rounded-lg transition">Ticket History</button>
                     <button @click="activeTab = 'audit'" :class="activeTab === 'audit' ? 'bg-amber-500/10 text-amber-400' : 'text-slate-500 hover:text-white'" class="px-4 py-2 text-sm font-bold rounded-lg transition">Audit Trail</button>
                 </div>
 
-                <!-- Queue History Tab -->
+                <div v-if="activeTab === 'queue'" class="p-6 bg-slate-900/60 rounded-2xl border border-slate-800/80 backdrop-blur-xl">
+                    <div class="flex items-start justify-between gap-4 mb-5">
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Queue Status Overview</h3>
+                            <p class="text-xs text-slate-600 mt-1">Volume for the current report filters</p>
+                        </div>
+                        <span class="text-[10px] font-bold text-slate-600 uppercase tracking-widest">{{ queueRequests.total || 0 }} records</span>
+                    </div>
+                    <div v-if="statusChartRows.length" class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                        <div v-for="status in statusChartRows" :key="status.key">
+                            <div class="flex items-center justify-between gap-3 mb-1.5">
+                                <span class="flex items-center gap-2 text-sm font-semibold text-slate-200">
+                                    <span class="h-2 w-2 rounded-full" :class="status.color"></span>
+                                    {{ status.label }}
+                                </span>
+                                <span class="text-xs font-bold text-slate-400">{{ status.total }}</span>
+                            </div>
+                            <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
+                                <div class="h-full rounded-full transition-all duration-500" :class="status.color" :style="{ width: status.width }"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="rounded-xl border border-dashed border-slate-800 bg-slate-950/30 py-8 text-center text-sm text-slate-600">
+                        No queue records match the current filters.
+                    </div>
+                </div>
+
+                <div v-if="activeTab === 'queue'" class="bg-slate-900/60 rounded-2xl border border-slate-800/80 backdrop-blur-xl overflow-hidden">
+                    <div class="flex items-start justify-between gap-4 border-b border-slate-800 px-6 py-5">
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Ticket History by Office</h3>
+                            <p class="text-xs text-slate-600 mt-1">Compare ticket activity across all offices</p>
+                        </div>
+                        <span class="text-[10px] font-bold text-slate-600 uppercase tracking-widest">{{ officeBreakdown.length }} offices</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-800">
+                            <thead class="bg-slate-900/80">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Office</th>
+                                    <th class="px-6 py-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total</th>
+                                    <th class="px-6 py-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Waiting</th>
+                                    <th class="px-6 py-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Completed</th>
+                                    <th class="px-6 py-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Cancelled</th>
+                                    <th class="px-6 py-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Skipped</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800/80">
+                                <tr v-for="office in officeBreakdown" :key="office.office_id" class="hover:bg-slate-800/30 transition">
+                                    <td class="px-6 py-3.5 text-sm font-semibold text-slate-200">{{ office.name }}</td>
+                                    <td class="px-6 py-3.5 text-right text-sm font-black text-amber-400">{{ office.total }}</td>
+                                    <td class="px-6 py-3.5 text-right text-sm text-yellow-400">{{ office.waiting }}</td>
+                                    <td class="px-6 py-3.5 text-right text-sm text-teal-400">{{ office.completed }}</td>
+                                    <td class="px-6 py-3.5 text-right text-sm text-red-400">{{ office.cancelled }}</td>
+                                    <td class="px-6 py-3.5 text-right text-sm text-orange-400">{{ office.skipped }}</td>
+                                </tr>
+                                <tr v-if="!officeBreakdown.length">
+                                    <td colspan="6" class="px-6 py-10 text-center text-sm text-slate-500">No office ticket history found.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Ticket History Tab -->
                 <div v-if="activeTab === 'queue'" class="space-y-6">
                     <!-- Filters -->
                     <div class="p-5 bg-slate-900/60 rounded-2xl border border-slate-800/80 backdrop-blur-xl">
@@ -112,7 +198,6 @@ const activeTab = ref('queue');
                                 </select>
                             </div>
                             <button type="submit" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold rounded-lg transition">Filter</button>
-                            <button type="button" @click="clearFilters" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-bold rounded-lg transition">Clear</button>
                         </form>
                     </div>
 

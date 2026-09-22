@@ -187,11 +187,7 @@ const secondaryCalling = computed(() => {
 
         <!-- TV Footer -->
         <footer class="relative z-10 w-full px-8 py-4 border-t border-slate-800/80 bg-slate-900/40 text-center text-xs text-slate-500 flex flex-col sm:flex-row justify-between items-center gap-2">
-            <p>&copy; 2026 Central Philippine Adventist College Queue System</p>
-            <p class="text-amber-400 font-semibold flex items-center gap-1.5">
-                <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                Auto Sync Enabled
-            </p>
+            <p>&copy; 2026 QUEUE-MMS</p>
         </footer>
 
     </div>

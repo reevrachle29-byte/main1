@@ -10,6 +10,7 @@ use App\Models\QueueSession;
 use App\Models\Notification;
 use App\Models\AuditLog;
 use Inertia\Inertia;
+use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -23,9 +24,30 @@ class QueueController extends Controller
             ->toArray();
 
         $offices = Office::where('is_active', true)
-            ->whereIn('office_id', $openSessionOfficeIds)
             ->with(['services' => fn ($query) => $query->where('is_active', true)])
             ->get();
+
+        $offices->each(function (Office $office) use ($openSessionOfficeIds) {
+            $serviceIds = $office->services->pluck('service_id');
+            $waitingCount = QueueRequest::whereIn('service_id', $serviceIds)
+                ->where('status', 'waiting')
+                ->count();
+            $sessionIsOpen = in_array($office->office_id, $openSessionOfficeIds, true);
+            $office->office_hours = 'Mon–Thu 8:00 AM–5:00 PM; Fri 8:00 AM–12:00 PM';
+
+            if (!$sessionIsOpen) {
+                $office->availability_status = 'unavailable';
+                $office->availability_label = 'Temporarily Unavailable';
+                $office->availability_message = 'Queue session is currently closed.';
+                return;
+            }
+
+            $office->availability_status = 'open';
+            $office->availability_label = 'Open';
+            $office->availability_message = $waitingCount > 0
+                ? "{$waitingCount} people currently waiting."
+                : 'Ready to issue queue tickets.';
+        });
 
         return Inertia::render('Queue/Kiosk', [
             'offices' => $offices
@@ -105,9 +127,27 @@ class QueueController extends Controller
             'tracking_code' => $trackingCode,
         ]);
 
+        $officeUserId = Office::where('office_id', $service->office_id)->value('user_id');
+        if ($officeUserId) {
+            DB::table('notifications')->insert([
+                'transaction_id' => null,
+                'user_id' => $officeUserId,
+                'type' => 'office',
+                'message' => "Ticket #{$nextNumber} joined the {$service->service_name} queue.",
+                'sent_at' => Carbon::now(),
+            ]);
+        }
+
         $position = QueueRequest::where('service_id', $request->service_id)
             ->where('status', 'waiting')
-            ->where('requested_at', '<=', $newQueue->requested_at)
+            ->where(function ($query) use ($newQueue) {
+                        $priority = in_array($newQueue->category, ['pwd', 'senior'], true) ? 1 : 2;
+                        $query->whereRaw("CASE WHEN category IN ('pwd', 'senior') THEN 1 ELSE 2 END < ?", [$priority])
+                    ->orWhere(function ($samePriority) use ($newQueue, $priority) {
+                            $samePriority->whereRaw("CASE WHEN category IN ('pwd', 'senior') THEN 1 ELSE 2 END = ?", [$priority])
+                            ->where('requested_at', '<=', $newQueue->requested_at);
+                    });
+            })
             ->count();
 
         $avgWait = DB::table('queue_transactions')
@@ -196,7 +236,33 @@ class QueueController extends Controller
             'request_id' => $newQueue->request_id,
         ]);
 
-        return redirect()->back()->with('success', "Walk-in ticket #{$nextNumber} created — Tracking: {$trackingCode}");
+        $officeUserId = Office::where('office_id', $service->office_id)->value('user_id');
+        if ($officeUserId) {
+            DB::table('notifications')->insert([
+                'transaction_id' => null,
+                'user_id' => $officeUserId,
+                'type' => 'office',
+                'message' => "Walk-in ticket #{$nextNumber} joined the {$service->service_name} queue.",
+                'sent_at' => Carbon::now(),
+            ]);
+        }
+
+        $position = QueueRequest::where('service_id', $service->service_id)
+            ->where('status', 'waiting')
+            ->where('requested_at', '<=', $newQueue->requested_at)
+            ->count();
+
+        return redirect()->back()
+            ->with('success', "Walk-in ticket #{$nextNumber} created.")
+            ->with('ticket', [
+                'queue_number' => $nextNumber,
+                'tracking_code' => $trackingCode,
+                'position' => $position,
+                'estimated_wait' => $position * 10,
+                'service' => $service->service_name,
+                'office' => $service->office?->name,
+                'walk_in' => true,
+            ]);
     }
 
     public function showDisplayMonitor()
@@ -263,7 +329,14 @@ class QueueController extends Controller
 
         $position = QueueRequest::where('service_id', $queueRequest->service_id)
             ->where('status', 'waiting')
-            ->where('requested_at', '<', $queueRequest->requested_at)
+            ->where(function ($query) use ($queueRequest) {
+                $priority = in_array($queueRequest->category, ['pwd', 'senior'], true) ? 1 : 2;
+                $query->whereRaw("CASE WHEN category IN ('pwd', 'senior') THEN 1 ELSE 2 END < ?", [$priority])
+                    ->orWhere(function ($samePriority) use ($queueRequest, $priority) {
+                    $samePriority->whereRaw("CASE WHEN category IN ('pwd', 'senior') THEN 1 ELSE 2 END = ?", [$priority])
+                            ->where('requested_at', '<', $queueRequest->requested_at);
+                    });
+            })
             ->count() + 1;
 
         $avgWait = DB::table('queue_transactions')

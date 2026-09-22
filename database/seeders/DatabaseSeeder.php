@@ -50,6 +50,17 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        $ssoStaff = User::firstOrCreate(
+            ['email' => 'sso@cpac.edu.ph'],
+            [
+                'name' => 'SSO Staff',
+                'contact' => '09123456786',
+                'role' => 'Employee',
+                'password' => $defaultPassword,
+                'email_verified_at' => now(),
+            ]
+        );
+
         // 3. Student Account
         User::firstOrCreate(
             ['email' => 'student@cpac.edu.ph'],
@@ -63,13 +74,24 @@ class DatabaseSeeder extends Seeder
         );
 
         // 4. Campus Offices
-        $registrarOffice = Office::firstOrCreate(
-            ['name' => 'SSO Office'],
+        $registrarOffice = Office::updateOrCreate(
+            ['name' => "Registrar's Office"],
             [
                 'user_id' => $registrarStaff->user_id,
                 'is_active' => true,
             ]
         );
+
+        $ssoOffice = Office::updateOrCreate(
+            ['name' => 'SSO Office'],
+            [
+                'user_id' => $ssoStaff->user_id,
+                'is_active' => true,
+            ]
+        );
+
+        $registrarStaff->update(['office_id' => $registrarOffice->office_id]);
+        $ssoStaff->update(['office_id' => $ssoOffice->office_id]);
 
         $businessOffice = Office::firstOrCreate(
             ['name' => 'Business Office'],
@@ -80,7 +102,7 @@ class DatabaseSeeder extends Seeder
         );
 
         // 5. Office Services
-        Service::firstOrCreate(
+        Service::updateOrCreate(
             [
                 'office_id' => $registrarOffice->office_id,
                 'service_name' => 'Transcript of Records (TOR)',
@@ -91,7 +113,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        Service::firstOrCreate(
+        Service::updateOrCreate(
             [
                 'office_id' => $registrarOffice->office_id,
                 'service_name' => 'Certificate of Enrollment',
@@ -101,6 +123,21 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+
+        Service::updateOrCreate(
+            [
+                'office_id' => $ssoOffice->office_id,
+                'service_name' => 'Residence Inquiry',
+            ],
+            [
+                'user_id' => $ssoStaff->user_id,
+                'is_active' => true,
+            ]
+        );
+
+        Service::where('office_id', $ssoOffice->office_id)
+            ->whereIn('service_name', ['Transcript of Records (TOR)', 'Certificate of Enrollment'])
+            ->delete();
 
         Service::firstOrCreate(
             [

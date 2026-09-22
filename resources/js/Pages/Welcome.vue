@@ -17,7 +17,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <Head title="Welcome - QUEUEVita" />
+    <Head title="Welcome - QUEUE-MMS" />
 
     <div class="min-h-screen bg-slate-900 relative flex flex-col justify-between p-6 md:p-12 overflow-hidden">
 
@@ -40,7 +40,7 @@ onMounted(() => {
         <header class="relative z-10 flex justify-between items-center max-w-7xl mx-auto w-full">
             <div class="flex items-center space-x-2">
                 <span class="text-3xl font-extrabold text-white tracking-tight">
-                    QUEUE<span class="text-amber-400">Vita.</span>
+                    QUEUE-MMS.
                 </span>
             </div>
             
@@ -93,7 +93,7 @@ onMounted(() => {
                 <div class="w-16 h-16 bg-amber-400/20 text-amber-400 rounded-full flex items-center justify-center mx-auto mb-6">
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                 </div>
-                <h2 class="text-3xl font-bold mb-2">Welcome to <span class="text-amber-400">QUEUEVita</span></h2>
+                <h2 class="text-3xl font-bold mb-2">Welcome to <span class="text-amber-400">QUEUE-MMS</span></h2>
                 <p class="text-slate-300 text-sm leading-relaxed mb-8">
                     Sign in to access the queue system, or create an account to get started.
                 </p>
@@ -164,7 +164,7 @@ onMounted(() => {
 
         <!-- Footer -->
         <footer class="relative z-10 text-center text-slate-400 text-xs">
-            Central Philippine Adventist College &copy; 2026 QUEUEVita System.
+            &copy; 2026 QUEUE-MMS.
         </footer>
     </div>
 </template>

@@ -17,6 +17,7 @@ const form = useForm({
 
 const showCategoryModal = ref(false);
 const showTicketConfirm = ref(false);
+const showHelpModal = ref(false);
 const selectedServiceId = ref(null);
 const pendingCategory = ref('regular');
 const selectedServiceName = computed(() => {
@@ -31,6 +32,12 @@ const selectedServiceName = computed(() => {
 
     return 'this service';
 });
+
+const availabilityClass = (status) => ({
+    open: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
+    busy: 'bg-amber-500/10 text-amber-300 border-amber-500/30',
+    unavailable: 'bg-slate-800 text-slate-500 border-slate-700',
+}[status] || 'bg-slate-800 text-slate-500 border-slate-700');
 
 const page = usePage();
 const successMessage = computed(() => page.props.flash?.success);
@@ -139,7 +146,7 @@ const printTicket = () => window.print();
 
         <!-- Header Bar -->
         <header class="relative z-10 w-full max-w-7xl mx-auto px-6 py-6 flex justify-between items-center border-b border-slate-800/80">
-            <div class="flex items-center gap-3.5">
+            <a href="/" class="flex items-center gap-3.5" aria-label="Go to CPAC QUEUE-MMS main page">
                 <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-400 via-teal-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20 ring-1 ring-white/20">
                     <span class="font-black text-slate-950 text-2xl tracking-tighter">Q</span>
                 </div>
@@ -147,20 +154,61 @@ const printTicket = () => window.print();
                     <h1 class="font-black text-xl leading-none tracking-tight text-white flex items-center gap-1.5">
                         CPAC <span class="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold tracking-normal">Kiosk</span>
                     </h1>
-                    <span class="text-[11px] text-slate-400 font-medium tracking-wide">Queue Management</span>
+                    <span class="text-[11px] text-slate-400 font-medium tracking-wide">CPAC QUEUE-MMS</span>
                 </div>
-            </div>
+            </a>
 
             <!-- Quick Action Links -->
             <div class="flex items-center gap-3">
+                <button
+                    type="button"
+                    @click="showHelpModal = true"
+                    class="px-4 py-2 text-xs font-bold text-amber-300 hover:text-amber-200 hover:bg-amber-500/10 rounded-xl transition-all border border-amber-500/30 flex items-center gap-2"
+                >
+                    Need Help?
+                </button>
                 <a href="/monitor" class="px-4 py-2 text-xs font-bold text-slate-300 hover:text-amber-400 hover:bg-slate-900 rounded-xl transition-all border border-transparent hover:border-slate-800 flex items-center gap-2">
                     Monitor Screen
                 </a>
                 <a href="/login" class="px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-slate-850 text-slate-200 rounded-xl transition border border-slate-800 shadow-sm flex items-center gap-2">
-                    Staff Login
+                    Login
                 </a>
             </div>
         </header>
+
+        <!-- Assistance Modal -->
+        <div v-if="showHelpModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+            <div class="w-full max-w-lg rounded-3xl border border-amber-500/30 bg-slate-900/95 p-7 shadow-2xl">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-widest text-amber-400">Kiosk Assistance</p>
+                        <h2 class="mt-2 text-2xl font-black text-white">Need help getting a ticket?</h2>
+                    </div>
+                    <button type="button" @click="showHelpModal = false" class="text-2xl leading-none text-slate-500 hover:text-white" aria-label="Close help">&times;</button>
+                </div>
+
+                <div class="mt-6 space-y-4 text-sm text-slate-300">
+                    <div class="flex gap-3">
+                        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500/15 font-black text-amber-300">1</span>
+                        <p>Ask the nearest office staff member for assistance.</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500/15 font-black text-amber-300">2</span>
+                        <p>Tell staff which office service you need.</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500/15 font-black text-amber-300">3</span>
+                        <p>Staff can create and print your ticket for you.</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 rounded-2xl border border-slate-700 bg-slate-950/60 p-4 text-center text-sm text-slate-400">
+                    Please do not take another ticket if staff has already printed one for you.
+                </div>
+
+                <button type="button" @click="showHelpModal = false" class="mt-6 w-full rounded-xl bg-amber-500 px-4 py-3 text-sm font-black text-slate-950 hover:bg-amber-400">Close</button>
+            </div>
+        </div>
 
         <!-- Main Body -->
         <main class="relative z-10 w-full max-w-6xl mx-auto px-6 py-10 flex-grow flex flex-col justify-center items-center">
@@ -246,16 +294,16 @@ const printTicket = () => window.print();
             </div>
 
             <!-- Dynamic Offices & Services Grid -->
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+            <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full">
                 <div 
                     v-for="office in offices" 
                     :key="office.office_id || office.id" 
-                    class="p-7 bg-slate-900/60 rounded-3xl border border-slate-800/80 backdrop-blur-xl shadow-2xl flex flex-col justify-between space-y-6"
+                    class="p-8 bg-slate-900/60 rounded-3xl border border-slate-800/80 backdrop-blur-xl shadow-2xl flex flex-col justify-between space-y-7"
                 >
                     <div class="space-y-4">
                         <div class="flex items-center justify-between border-b border-slate-800/80 pb-4">
-                            <h3 class="text-xl font-bold text-white flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                            <h3 class="text-2xl font-bold text-white flex items-center gap-3">
+                                <span class="w-3 h-3 rounded-full bg-amber-400"></span>
                                 {{ office.name }}
                             </h3>
                             <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400">
@@ -263,21 +311,30 @@ const printTicket = () => window.print();
                             </span>
                         </div>
 
+                        <div class="flex items-center justify-between gap-3">
+                            <span :class="availabilityClass(office.availability_status)" class="rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wider">
+                                {{ office.availability_label }}
+                            </span>
+                            <span class="text-right text-xs text-slate-500">{{ office.availability_message }}</span>
+                        </div>
+                        <p class="text-xs text-slate-500">Office hours: {{ office.office_hours }}</p>
+
                         <!-- Services List -->
-                        <div class="grid grid-cols-1 gap-3">
+                        <div class="grid grid-cols-1 gap-4">
                             <button 
                                 v-for="service in office.services" 
                                 :key="service.service_id || service.id"
                                 @click="takeTicket(service.service_id || service.id)"
-                                :disabled="form.processing"
-                                class="group relative w-full p-4 rounded-2xl bg-slate-950/50 hover:bg-amber-500/10 border border-slate-800 hover:border-amber-500/40 text-left transition-all duration-300 flex items-center justify-between active:scale-[0.98] cursor-pointer"
+                                :disabled="form.processing || office.availability_status === 'unavailable'"
+                                :aria-label="`Get queue ticket for ${service.service_name || service.name}`"
+                                class="group relative w-full min-h-24 p-5 rounded-2xl bg-slate-950/50 hover:bg-amber-500/10 border border-slate-800 hover:border-amber-500/40 text-left transition-all duration-300 flex items-center justify-between gap-5 active:scale-[0.98] cursor-pointer disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-slate-950/50 disabled:hover:border-slate-800"
                             >
-                                <span class="font-semibold text-sm text-slate-200 group-hover:text-amber-400 transition-colors">
+                                <span class="font-bold text-lg leading-snug text-slate-200 group-hover:text-amber-400 transition-colors">
                                     {{ service.service_name || service.name }}
                                 </span>
 
-                                <span class="text-xs font-bold text-slate-500 group-hover:text-amber-400 flex items-center gap-1">
-                                    <span>Get Ticket</span>
+                                <span class="shrink-0 rounded-xl bg-amber-500/10 px-4 py-3 text-xs font-black uppercase tracking-wider text-amber-300 group-hover:bg-amber-500 group-hover:text-slate-950 transition-colors">
+                                    Get Queue Ticket
                                 </span>
                             </button>
                         </div>
@@ -289,7 +346,7 @@ const printTicket = () => window.print();
 
         <!-- Footer -->
         <footer class="relative z-10 w-full max-w-7xl mx-auto px-6 py-6 border-t border-slate-800/80 text-center text-xs text-slate-500">
-            <p>&copy; 2026 Central Philippine Adventist College. All Rights Reserved.</p>
+            <p>&copy; 2026 QUEUE-MMS. All Rights Reserved.</p>
         </footer>
 
         <!-- Category Selection Modal -->
@@ -297,45 +354,42 @@ const printTicket = () => window.print();
             <div class="bg-slate-900/95 border border-slate-800 rounded-3xl shadow-2xl max-w-md w-full p-8 space-y-6">
                 <div class="text-center space-y-2">
                     <h3 class="text-2xl font-bold text-white">Select Category</h3>
-                    <p class="text-sm text-slate-400">Choose your priority category</p>
+                    <p class="text-sm text-slate-400">Choose a queue category</p>
                 </div>
 
                 <div class="space-y-3">
-                    <!-- PWD Button -->
                     <button
                         @click="submitTicket('pwd')"
-                        :disabled="form.processing"
-                        class="w-full p-4 rounded-2xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/40 hover:border-blue-500/60 text-left transition-all group"
-                    >
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center text-xl">
-                                ♿
-                            </div>
-                            <div>
-                                <div class="font-bold text-blue-400 group-hover:text-blue-300">PWD (Priority)</div>
-                                <div class="text-xs text-slate-500">Persons with Disabilities</div>
-                            </div>
-                        </div>
-                    </button>
-
-                    <!-- Senior Button -->
-                    <button
-                        @click="submitTicket('senior')"
                         :disabled="form.processing"
                         class="w-full p-4 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 hover:border-amber-500/60 text-left transition-all group"
                     >
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center text-xl">
-                                👴
+                                ♿
                             </div>
                             <div>
-                                <div class="font-bold text-amber-400 group-hover:text-amber-300">Senior Citizen (Priority)</div>
-                                <div class="text-xs text-slate-500">60 years old and above</div>
+                                <div class="font-bold text-amber-400 group-hover:text-amber-300">PWD</div>
+                                <div class="text-xs text-slate-500">Persons with disabilities</div>
                             </div>
                         </div>
                     </button>
 
-                    <!-- Regular Button -->
+                    <button
+                        @click="submitTicket('senior')"
+                        :disabled="form.processing"
+                        class="w-full p-4 rounded-2xl bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/40 hover:border-orange-500/60 text-left transition-all group"
+                    >
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center text-xl">
+                                👴
+                            </div>
+                            <div>
+                                <div class="font-bold text-orange-400 group-hover:text-orange-300">Senior</div>
+                                <div class="text-xs text-slate-500">Senior citizen</div>
+                            </div>
+                        </div>
+                    </button>
+
                     <button
                         @click="submitTicket('regular')"
                         :disabled="form.processing"

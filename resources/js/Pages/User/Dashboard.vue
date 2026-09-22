@@ -7,6 +7,7 @@ import ConfirmationModal from '@/Components/ConfirmationModal.vue';
 
 const props = defineProps({
     users: { type: Array, default: () => [] },
+    userStats: { type: Object, default: () => ({}) },
     offices: { type: Array, default: () => [] },
 });
 
@@ -79,7 +80,35 @@ const roleBadge = (role) => {
         </template>
 
         <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+                <div class="grid grid-cols-2 gap-4 md:grid-cols-5">
+                    <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5 backdrop-blur-xl">
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Today</p>
+                        <p class="mt-1 text-3xl font-black text-amber-400">{{ userStats.today || 0 }}</p>
+                        <p class="mt-1 text-[10px] text-slate-600">New registrations</p>
+                    </div>
+                    <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5 backdrop-blur-xl">
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-500">This Week</p>
+                        <p class="mt-1 text-3xl font-black text-teal-400">{{ userStats.week || 0 }}</p>
+                        <p class="mt-1 text-[10px] text-slate-600">New registrations</p>
+                    </div>
+                    <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5 backdrop-blur-xl">
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-500">This Month</p>
+                        <p class="mt-1 text-3xl font-black text-blue-400">{{ userStats.month || 0 }}</p>
+                        <p class="mt-1 text-[10px] text-slate-600">New registrations</p>
+                    </div>
+                    <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5 backdrop-blur-xl">
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-500">This Year</p>
+                        <p class="mt-1 text-3xl font-black text-violet-400">{{ userStats.year || 0 }}</p>
+                        <p class="mt-1 text-[10px] text-slate-600">New registrations</p>
+                    </div>
+                    <div class="col-span-2 rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5 backdrop-blur-xl md:col-span-1">
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Total Users</p>
+                        <p class="mt-1 text-3xl font-black text-white">{{ userStats.total || 0 }}</p>
+                        <p class="mt-1 text-[10px] text-slate-600">All accounts</p>
+                    </div>
+                </div>
+
                 <div class="bg-slate-900/60 rounded-2xl border border-slate-800/80 backdrop-blur-xl overflow-hidden">
                     <table class="min-w-full divide-y divide-slate-800">
                         <thead class="bg-slate-900/80">

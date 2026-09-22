@@ -10,15 +10,25 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 use App\Models\AuditLog;
+use Carbon\Carbon;
 
 class UserController extends Controller
 {
     public function index(): Response
     {
+        $now = Carbon::now();
+
         return Inertia::render('User/Dashboard', [
             'users' => User::with('office:office_id,name')
                 ->orderBy('user_id', 'desc')
                 ->get(),
+            'userStats' => [
+                'today' => User::where('created_at', '>=', $now->copy()->startOfDay())->count(),
+                'week' => User::where('created_at', '>=', $now->copy()->startOfWeek())->count(),
+                'month' => User::where('created_at', '>=', $now->copy()->startOfMonth())->count(),
+                'year' => User::where('created_at', '>=', $now->copy()->startOfYear())->count(),
+                'total' => User::count(),
+            ],
             'offices' => Office::select('office_id', 'name', 'is_active')
                 ->orderBy('name')
                 ->get(),

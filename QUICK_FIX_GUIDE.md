@@ -114,7 +114,7 @@ SKIPPED: 0 (or minimal)
 
 ### Create `README.md` with:
 ```markdown
-# QueueVita - Queue Management System
+# QUEUE-MMS - Queue Management System
 
 A Laravel + Vue.js application for managing queues in educational/service institutions.
 
