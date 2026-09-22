@@ -143,13 +143,25 @@ const walkInTicket = computed(() => {
     return ticket?.walk_in && !hideWalkInTicket.value ? ticket : null;
 });
 
-watch(() => page.props.flash?.ticket, () => { hideWalkInTicket.value = false; });
+watch(() => page.props.flash?.ticket, (ticket) => {
+    hideWalkInTicket.value = false;
+
+    if (ticket?.walk_in) {
+        setTimeout(() => {
+            window.print();
+        }, 500);
+    }
+});
 
 const printWalkInTicket = () => window.print();
 
 const submitManual = () => {
     manualForm.post(route('queue.manualGenerate'), {
-        onSuccess: () => { showManualModal.value = false; manualForm.reset(); },
+        onSuccess: () => {
+            showManualModal.value = false;
+            manualForm.reset();
+            setTimeout(() => window.print(), 400);
+        },
         preserveScroll: true,
     });
 };
@@ -179,7 +191,7 @@ const submitManual = () => {
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 20a6 6 0 00-12 0m6-8a4 4 0 100-8 4 4 0 000 8zm7-3v6m3-3h-6" />
                         </svg>
-                        Walk-in
+                        Walk-in / Visitor
                     </button>
                     <button
                         @click="callNext()"
@@ -398,7 +410,7 @@ const submitManual = () => {
         <!-- Walk-in Modal -->
         <div v-if="showManualModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-                <h3 class="text-lg font-bold text-white mb-4">Generate Walk-in Ticket</h3>
+                <h3 class="text-lg font-bold text-white mb-4">Generate Walk-in / Visitor Ticket</h3>
                 <form @submit.prevent="submitManual" class="space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Service</label>
