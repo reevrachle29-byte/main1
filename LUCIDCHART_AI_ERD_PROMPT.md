@@ -1,9 +1,9 @@
-# Lucidchart AI ERD Prompt
+# ERD Prompt for Lucidchart or Eraser
 
-Copy the prompt below into Lucidchart AI to generate a relational ERD for the queue system's core application schema.
+Copy the prompt below into Lucidchart AI or Eraser to generate a relational ERD for the queue system's core application schema for capstone documentation.
 
 ```text
-Create a clean, readable relational Entity-Relationship Diagram (ERD) for the core database of a College Queue Management System. This is a database ERD, not a data-flow diagram or workflow chart.
+Create a clean, professional, easy-to-understand relational Entity-Relationship Diagram (ERD) for the core database of a College Queue Management System. This is a database ERD, not a data-flow diagram or workflow chart. Make it suitable for capstone documentation and readable when printed.
 
 Use Crow's Foot notation. Show each entity as a table with its real table name and principal attributes. Mark primary keys as PK, foreign keys as FK, unique fields as UNIQUE, and nullable fields as NULL. Show relationship optionality and cardinality at both ends. Do not invent entities, foreign keys, or relationships. Do not merge separate foreign keys just because they connect the same pair of tables.
 
@@ -15,7 +15,7 @@ users
 - name
 - email UNIQUE
 - password
-- role (admin, administrator, staff, employee, student)
+- role (string, default student; current values include admin, administrator, staff, employee, student)
 - contact NULL
 - phone_number NULL
 - email_verified_at NULL
@@ -27,6 +27,7 @@ offices
 - user_id FK NULL -> users.user_id
 - name
 - is_active
+- window_count (unsigned small integer; default 1)
 - created_at
 - updated_at
 
@@ -45,7 +46,7 @@ queue_requests
 - service_id FK NOT NULL -> services.service_id
 - queue_number
 - tracking_code UNIQUE
-- status (string; commonly waiting, called, serving, completed, skipped, cancelled)
+- status (string; default waiting)
 - category (pwd, senior, regular; default regular)
 - requested_at NULL
 
@@ -56,12 +57,13 @@ queue_transactions
 - called_at NULL
 - completed_at NULL
 - wait_minutes NULL
+- counter_number NULL (unsigned small integer)
 
 notifications
 - notif_id PK
 - transaction_id FK NULL -> queue_transactions.transaction_id
 - user_id FK NULL -> users.user_id
-- type (string; commonly audio, display, user, office)
+- type (string; default display)
 - message
 - sent_at
 
@@ -112,5 +114,5 @@ Preserve the database delete behavior in relationship annotations where supporte
 - Deleting a user sets the related nullable user foreign keys to NULL, except queue_sessions.user_id, which cascades with the session.
 - Deleting an office sets users.office_id to NULL. Deleting a user referenced by offices.user_id or services.user_id sets those foreign keys to NULL.
 
-Arrange the diagram with offices and users near the top, services and queue_sessions below them, queue_requests and queue_transactions in the center, notifications and audit_logs nearby, and the independent queue_sequences table at the bottom. Avoid crossing relationship lines where possible. Exclude framework support tables such as password reset tokens and browser sessions; include only the listed core application tables.
+Arrange the diagram with offices and users near the top, services and queue_sessions below them, queue_requests and queue_transactions in the center, notifications and audit_logs nearby, and the independent queue_sequences table apart from related tables. Build a clean, balanced layout with generous whitespace between tables. Use straight or right-angle (orthogonal/elbow) connectors. Do not let relationship lines cross one another, pass through tables, overlap labels, or obscure cardinality markers. If a connector would cross another, reposition the tables or reroute the line until the relationships are clear. Do not overlap tables, labels, or connectors. Keep relationship endpoints and Crow's Foot markers visible. Prioritize readability over compactness. Exclude framework support tables such as password reset tokens and browser sessions; include only the listed core application tables.
 ```

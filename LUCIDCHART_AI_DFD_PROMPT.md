@@ -1,9 +1,9 @@
-# Lucidchart AI Prompt
+# DFD Prompt for Lucidchart or Eraser
 
-Copy the prompt below into Lucidchart AI. It asks for a conventional, multi-level DFD based on this system's actual workflows.
+Copy the prompt below into Lucidchart AI or Eraser. It asks for a conventional, multi-level DFD based on this system's actual workflows.
 
 ```text
-Create a professional Data Flow Diagram (DFD) for a College Queue Management System. Create separate diagrams or pages for Level 0, Level 1, and Level 2. At Level 2, show a separate decomposition for each of the six Level 1 processes so the result remains readable.
+Create a professional, clean, easy-to-understand Data Flow Diagram (DFD) for a College Queue Management System. Create eight clearly titled pages: one Level 0 context diagram, one Level 1 diagram, and one Level 2 decomposition page for each of the six Level 1 processes. Make every page suitable for capstone documentation and readable when printed.
 
 Use standard DFD notation consistently:
 - External entities are rectangles.
@@ -13,6 +13,9 @@ Use standard DFD notation consistently:
 - Do not use decision diamonds, start/end symbols, swimlanes, sequence-diagram lifelines, or generic flowchart styling.
 - Keep external entities outside the application processes. Keep data stores separate from processes.
 - Balance the diagrams: Level 0 boundary flows must be represented by Level 1, and each Level 1 process's inputs and outputs must be represented in its Level 2 decomposition.
+- Use a clear left-to-right layout with generous whitespace. Keep external entities at the outer edges, processes aligned in the center, and data stores close to the processes that use them.
+- Route data-flow arrows with straight or right-angle (orthogonal/elbow) connectors. Do not let arrows cross one another, pass through symbols, overlap labels, or obscure arrowheads. If a route would cross another arrow, reposition the entities, processes, or stores and reroute it. Use connector bridges only if crossings are truly unavoidable and the diagram tool supports them.
+- Do not overlap symbols, labels, arrows, or page titles. Use consistent spacing, alignment, font sizing, process numbering, store identifiers, and flow-label placement on every page. Prioritize readability over compactness; reposition or redistribute elements rather than crowding them.
 
 SYSTEM AND EXTERNAL ENTITIES
 E1 Student or walk-in client
@@ -107,5 +110,5 @@ BUSINESS RULES TO SHOW AS CALLOUTS, NOT AS FLOWCHART DECISIONS
 - Report row and office-breakdown filters use the selected criteria, but headline summary cards and recent audit activity are not all scoped to those filters.
 - Notifications are stored in the application; do not draw an external SMS provider.
 
-Arrange each diagram for readability, with external entities at the edges, processes in the center, and relevant data stores nearby. Use consistent numbering and labels across all levels.
+Maintain a consistent visual layout across all eight pages. Keep external entities at the edges, processes in the center, and relevant data stores nearby. Use consistent numbering and labels across all levels. Ensure every page has clearly visible inputs and outputs without tangled or crossing arrows.
 ```

@@ -143,7 +143,7 @@ const kioskSubtitle = computed(() => props.walk_in_mode
 </script>
 
 <template>
-    <div class="relative min-h-screen bg-slate-950 font-sans text-slate-100 flex flex-col justify-between overflow-x-hidden">
+    <div class="kiosk-print-page relative min-h-screen bg-slate-950 font-sans text-slate-100 flex flex-col justify-between overflow-x-hidden">
         
         <!-- Ambient Glowing Backgrounds -->
         <div class="fixed inset-0 pointer-events-none z-0">
@@ -237,10 +237,10 @@ const kioskSubtitle = computed(() => props.walk_in_mode
                 {{ errorMessage }}
             </div>
 
-            <div v-if="ticket" class="w-full max-w-lg mb-10 p-7 bg-amber-500/10 border border-amber-500/30 rounded-3xl backdrop-blur-xl shadow-2xl text-center space-y-5">
+            <div v-if="ticket" id="ticket-print-card" class="w-full max-w-lg mb-10 p-7 bg-amber-500/10 border border-amber-500/30 rounded-3xl backdrop-blur-xl shadow-2xl text-center space-y-5">
                 <p class="text-xs font-bold uppercase tracking-widest text-amber-400">Ticket Confirmed</p>
                 <p class="text-6xl font-black text-white">#{{ ticket.queue_number }}</p>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <div class="ticket-details-grid grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     <div class="rounded-xl border border-slate-800 bg-slate-950/50 p-3"><span class="block text-xs text-slate-500">Office</span>{{ ticket.office }}</div>
                     <div class="rounded-xl border border-slate-800 bg-slate-950/50 p-3"><span class="block text-xs text-slate-500">Position</span>{{ ticket.position }}</div>
                     <div class="rounded-xl border border-slate-800 bg-slate-950/50 p-3"><span class="block text-xs text-slate-500">Service</span>{{ ticket.service }}</div>
@@ -251,7 +251,7 @@ const kioskSubtitle = computed(() => props.walk_in_mode
                     <strong class="font-mono text-amber-400">{{ ticket.tracking_code }}</strong>
                 </div>
                 <div v-if="qrCodeUrl" class="flex flex-col items-center gap-2 rounded-xl border border-slate-800 bg-white p-3">
-                    <img :src="qrCodeUrl" alt="QR code for tracking this ticket" class="h-32 w-32" />
+                    <img :src="qrCodeUrl" alt="QR code for tracking this ticket" class="ticket-qr-code h-32 w-32" />
                     <span class="text-xs text-slate-700">Scan to track your queue</span>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -466,3 +466,105 @@ const kioskSubtitle = computed(() => props.walk_in_mode
         </div>
     </div>
 </template>
+
+<style>
+@media print {
+    @page {
+        size: 80mm auto;
+        margin: 0;
+    }
+
+    html,
+    body,
+    #app {
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: 100vh !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .kiosk-print-page {
+        display: block !important;
+        width: 80mm !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: 100vh !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        background: #fff !important;
+        color: #111 !important;
+    }
+
+    .kiosk-print-page > :not(main) {
+        display: none !important;
+    }
+
+    .kiosk-print-page > main {
+        display: block !important;
+        width: 80mm !important;
+        max-width: 80mm !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: 100vh !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        background: #fff !important;
+    }
+
+    .kiosk-print-page > main > :not(#ticket-print-card) {
+        display: none !important;
+    }
+
+    #ticket-print-card {
+        display: block !important;
+        position: static !important;
+        box-sizing: border-box !important;
+        width: 80mm !important;
+        max-width: 80mm !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: 100vh !important;
+        margin: 0 !important;
+        padding: 5mm !important;
+        overflow: hidden !important;
+        border: 1px solid #111 !important;
+        border-radius: 0 !important;
+        background: #fff !important;
+        box-shadow: none !important;
+        color: #111 !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+    }
+
+    #ticket-print-card * {
+        color: #111 !important;
+        text-shadow: none !important;
+        box-shadow: none !important;
+    }
+
+    #ticket-print-card .ticket-details-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 2mm !important;
+    }
+
+    #ticket-print-card .text-6xl {
+        font-size: 34pt !important;
+        line-height: 1 !important;
+    }
+
+    #ticket-print-card .ticket-qr-code {
+        width: 24mm !important;
+        height: 24mm !important;
+    }
+
+    #ticket-print-card button {
+        display: none !important;
+    }
+}
+</style>
