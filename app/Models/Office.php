@@ -19,10 +19,12 @@ class Office extends Model
         'name',
         'user_id',
         'is_active',
+        'window_count',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'window_count' => 'integer',
     ];
 
     /**

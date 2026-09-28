@@ -14,6 +14,8 @@ const props = defineProps({
 });
 
 const audioRef = ref(null);
+const isRefreshing = ref(false);
+const lastUpdated = ref(new Date());
 const form = useForm({ service_id: null, category: 'regular' });
 const cancelConfirm = ref({
     open: false,
@@ -33,7 +35,11 @@ let bannerTimer = null;
 
 onMounted(() => {
     pollInterval = setInterval(() => {
-        router.reload({ only: ['myQueueRequests', 'waitingCount', 'servingCount', 'notifications'], preserveScroll: true });
+        isRefreshing.value = true;
+        router.reload({ only: ['myQueueRequests', 'waitingCount', 'servingCount', 'notifications'], preserveScroll: true, onFinish: () => {
+            isRefreshing.value = false;
+            lastUpdated.value = new Date();
+        }});
     }, 5000);
 });
 
@@ -266,10 +272,26 @@ const closeCancelModal = () => {
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
 
+                <div class="flex justify-end">
+                    <a
+                        href="/kiosk/walk-in"
+                        target="_blank"
+                        class="inline-flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-amber-300 transition hover:bg-amber-500/20"
+                    >
+                        Open Walk-in Kiosk
+                    </a>
+                </div>
+
                 <!-- Stats -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div class="p-5 bg-slate-900/60 rounded-2xl border border-slate-800/80 backdrop-blur-xl">
-                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Your Active Tickets</p>
+                        <div class="flex items-center justify-between gap-3">
+                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Your Active Tickets</p>
+                            <span class="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.2em] text-amber-300">
+                                <span class="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                                Live
+                            </span>
+                        </div>
                         <p class="text-3xl font-black text-amber-400 mt-1">{{ activeRequests.length }}</p>
                     </div>
                     <div class="p-5 bg-slate-900/60 rounded-2xl border border-slate-800/80 backdrop-blur-xl">
@@ -280,6 +302,14 @@ const closeCancelModal = () => {
                         <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Currently Serving</p>
                         <p class="text-3xl font-black text-blue-400 mt-1">{{ servingCount }}</p>
                     </div>
+                </div>
+
+                <div class="flex items-center justify-between rounded-2xl border border-slate-800/70 bg-slate-900/60 px-4 py-3 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+                    <span>Live queue tracking</span>
+                    <span class="inline-flex items-center gap-2 text-slate-300">
+                        <span class="h-2 w-2 rounded-full" :class="isRefreshing ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'" aria-hidden="true"></span>
+                        {{ isRefreshing ? 'Refreshing...' : `Updated ${lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` }}
+                    </span>
                 </div>
 
                 <!-- Grab a Ticket -->

@@ -28,7 +28,7 @@ const handleLogin = () => {
             playsinline
             preload="auto"
             class="absolute inset-0 w-full h-full object-cover"
-            src="/videos/welcome.mov"
+            src="/videos/welcome.mp4"
         ></video>
         <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-[2px]"></div>
 

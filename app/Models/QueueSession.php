@@ -29,4 +29,9 @@ class QueueSession extends Model
     {
         return $this->status === 'open';
     }
+
+    public function isPaused(): bool
+    {
+        return $this->status === 'paused';
+    }
 }

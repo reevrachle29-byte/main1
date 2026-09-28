@@ -29,10 +29,11 @@ Route::get('/', function () {
 });
 
 Route::get('/kiosk', [QueueController::class, 'showKiosk'])->name('queue.kiosk');
+Route::get('/kiosk/walk-in', [QueueController::class, 'showWalkInKiosk'])->name('queue.kiosk.walkin');
 Route::post('/kiosk/generate', [QueueController::class, 'generateTicket'])
     ->middleware('throttle:ticket-generation')
     ->name('queue.generate');
-Route::get('/monitor', [QueueController::class, 'showDisplayMonitor'])->name('queue.monitor');
+Route::get('/monitor/{officeId?}', [QueueController::class, 'showDisplayMonitor'])->whereNumber('officeId')->name('queue.monitor');
 
 Route::get('/queue/inquiry', [QueueController::class, 'inquiry'])
     ->middleware('throttle:tracking-lookup')
@@ -66,8 +67,10 @@ Route::middleware([
         Route::post('/dashboard/staff/skip/{requestId}', [DashboardController::class, 'skipTransaction'])->name('queue.skip');
         Route::post('/dashboard/staff/cancel/{requestId}', [DashboardController::class, 'cancelTransaction'])->name('queue.cancel');
         Route::post('/dashboard/staff/manual-generate', [QueueController::class, 'manualGenerate'])->name('queue.manualGenerate');
+        Route::get('/dashboard/staff/print/walk-in', [QueueController::class, 'printWalkInReceipt'])->name('queue.print.walkin');
 
         Route::post('/queue-session/open', [QueueSessionController::class, 'open'])->name('queueSession.open');
+        Route::post('/queue-session/pause', [QueueSessionController::class, 'pause'])->name('queueSession.pause');
         Route::post('/queue-session/close', [QueueSessionController::class, 'close'])->name('queueSession.close');
         Route::get('/queue-session/status', [QueueSessionController::class, 'status'])->name('queueSession.status');
     });
@@ -103,6 +106,7 @@ Route::middleware([
         })->name('dashboard');
 
         Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
+        Route::get('/reports/export', [ReportsController::class, 'export'])->name('reports.export');
 
         Route::resource('users', UserController::class)->except(['create', 'edit', 'show']);
         Route::resource('offices', OfficeController::class)->except(['create', 'edit', 'show']);

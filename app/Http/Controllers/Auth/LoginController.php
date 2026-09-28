@@ -27,8 +27,14 @@ class LoginController extends Controller
             $user = Auth::user();
 
             // FR-UM-04: Role-Based Redirects
-            if ($user->isAdmin()) {
+            $isExplicitAdminTestAccount = strtolower((string) ($user->email ?? '')) === 'admin@cpac.edu.ph';
+
+            if ($user->isAdmin() && !$isExplicitAdminTestAccount) {
                 return redirect()->intended(route('admin.dashboard'));
+            }
+
+            if ($user->isAdmin() && $isExplicitAdminTestAccount) {
+                return redirect()->intended(route('dashboard'));
             }
 
             if ($user->isEmployee()) {

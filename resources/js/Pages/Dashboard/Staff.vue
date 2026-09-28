@@ -11,6 +11,7 @@ const props = defineProps({
     recentTicketHistory: { type: Array, default: () => [] },
     offices: { type: Array, default: () => [] },
     openSessions: { type: Array, default: () => [] },
+    pausedSessions: { type: Array, default: () => [] },
     selectedOffice: { type: Object, default: null },
     officeNotifications: { type: Array, default: () => [] },
 });
@@ -18,6 +19,7 @@ const props = defineProps({
 let pollInterval = null;
 const audioRef = ref(null);
 const currentAlert = ref(null);
+const selectedWindow = ref(1);
 const seenNotificationIds = new Set();
 let alertTimeout = null;
 
@@ -50,8 +52,13 @@ onUnmounted(() => {
 });
 
 const callNext = () => {
-    router.post(route('queue.callNext'));
+    router.post(route('queue.callNext'), {
+        office_id: props.selectedOffice?.office_id || null,
+        counter_number: selectedWindow.value,
+    });
 };
+
+watch(() => props.selectedOffice?.office_id, () => { selectedWindow.value = 1; });
 
 const recallLast = () => {
     router.post(route('queue.recallLast'));
@@ -73,6 +80,10 @@ const isSessionOpen = (officeId) => {
     return props.openSessions.some(s => s.office_id === officeId);
 };
 
+const isSessionPaused = (officeId) => {
+    return props.pausedSessions.some(s => s.office_id === officeId);
+};
+
 const toggleSession = (officeId) => {
     if (isSessionOpen(officeId)) {
         router.post(route('queueSession.close'), {
@@ -80,7 +91,7 @@ const toggleSession = (officeId) => {
             preserveScroll: true,
         }, {
             onSuccess: () => {
-                router.reload({ only: ['waitingQueue', 'servingQueue', 'openSessions'], preserveScroll: true });
+                router.reload({ only: ['waitingQueue', 'servingQueue', 'openSessions', 'pausedSessions'], preserveScroll: true });
             },
         });
     } else {
@@ -89,10 +100,21 @@ const toggleSession = (officeId) => {
             preserveScroll: true,
         }, {
             onSuccess: () => {
-                router.reload({ only: ['waitingQueue', 'servingQueue', 'openSessions'], preserveScroll: true });
+                router.reload({ only: ['waitingQueue', 'servingQueue', 'openSessions', 'pausedSessions'], preserveScroll: true });
             },
         });
     }
+};
+
+const pauseSession = (officeId) => {
+    router.post(route('queueSession.pause'), {
+        office_id: officeId,
+        preserveScroll: true,
+    }, {
+        onSuccess: () => {
+            router.reload({ only: ['waitingQueue', 'servingQueue', 'openSessions', 'pausedSessions'], preserveScroll: true });
+        },
+    });
 };
 
 const selectOffice = (office) => {
@@ -137,30 +159,13 @@ const manualForm = useForm({ service_id: '', category: 'regular' });
 const showManualModal = ref(false);
 const page = usePage();
 const isAdmin = computed(() => ['admin', 'administrator'].includes(String(page.props.auth?.user?.role || '').toLowerCase()));
-const hideWalkInTicket = ref(false);
-const walkInTicket = computed(() => {
-    const ticket = page.props.flash?.ticket;
-    return ticket?.walk_in && !hideWalkInTicket.value ? ticket : null;
-});
-
-watch(() => page.props.flash?.ticket, (ticket) => {
-    hideWalkInTicket.value = false;
-
-    if (ticket?.walk_in) {
-        setTimeout(() => {
-            window.print();
-        }, 500);
-    }
-});
-
-const printWalkInTicket = () => window.print();
 
 const submitManual = () => {
     manualForm.post(route('queue.manualGenerate'), {
         onSuccess: () => {
             showManualModal.value = false;
             manualForm.reset();
-            setTimeout(() => window.print(), 400);
+            hideWalkInTicket.value = false;
         },
         preserveScroll: true,
     });
@@ -175,6 +180,12 @@ const submitManual = () => {
                     {{ selectedOffice ? selectedOffice.name + ' Queue Console' : 'Staff Queue Console' }}
                 </h2>
                 <div class="flex gap-2">
+                    <label v-if="selectedOffice" class="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-xs font-bold text-slate-400">
+                        Call at
+                        <select v-model.number="selectedWindow" class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-white focus:border-amber-500 focus:outline-none">
+                            <option v-for="windowNumber in (selectedOffice.window_count || 1)" :key="windowNumber" :value="windowNumber">Window {{ windowNumber }}</option>
+                        </select>
+                    </label>
                     <button
                         @click="recallLast"
                         class="inline-flex items-center gap-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 font-bold py-2 px-4 rounded-xl text-sm transition"
@@ -185,16 +196,8 @@ const submitManual = () => {
                         Recall Last
                     </button>
                     <button
-                        @click="showManualModal = true"
-                        class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold py-2 px-4 rounded-xl text-sm transition"
-                    >
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 20a6 6 0 00-12 0m6-8a4 4 0 100-8 4 4 0 000 8zm7-3v6m3-3h-6" />
-                        </svg>
-                        Walk-in / Visitor
-                    </button>
-                    <button
                         @click="callNext()"
+                        :title="selectedOffice ? 'Call the next waiting client to the selected window' : 'Call the next waiting client across all offices to Window 1'"
                         class="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-teal-600 text-slate-950 font-bold py-2 px-6 rounded-xl shadow-lg shadow-amber-500/10 hover:shadow-amber-500/20 transition text-sm"
                     >
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -207,27 +210,6 @@ const submitManual = () => {
         </template>
 
         <AudioNotification ref="audioRef" />
-
-        <div v-if="walkInTicket" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-            <div class="receipt-ticket-container">
-                <div class="walk-in-print-ticket w-full max-w-sm rounded-2xl border border-slate-700 bg-white p-6 text-center text-slate-900 shadow-2xl">
-                    <p class="text-xs font-black uppercase tracking-[0.25em] text-slate-500">CPAC Queue Ticket</p>
-                    <p class="mt-4 text-7xl font-black tracking-tight">#{{ walkInTicket.queue_number }}</p>
-                    <div class="mt-4 space-y-2 border-y border-slate-200 py-4 text-sm">
-                        <p><span class="font-bold">Office:</span> {{ walkInTicket.office }}</p>
-                        <p><span class="font-bold">Service:</span> {{ walkInTicket.service }}</p>
-                        <p><span class="font-bold">Position:</span> {{ walkInTicket.position }}</p>
-                        <p><span class="font-bold">Estimated wait:</span> ~{{ walkInTicket.estimated_wait }} minutes</p>
-                    </div>
-                    <p class="mt-4 text-xs text-slate-500">Tracking code</p>
-                    <p class="font-mono text-lg font-bold tracking-widest">{{ walkInTicket.tracking_code }}</p>
-                    <div class="mt-6 flex gap-3 print:hidden">
-                        <button type="button" @click="printWalkInTicket" class="flex-1 rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 hover:bg-amber-400">Print Ticket</button>
-                        <button type="button" @click="hideWalkInTicket = true" class="rounded-xl bg-slate-200 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-300">Close</button>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <Transition name="office-alert">
             <div v-if="currentAlert" class="fixed right-5 top-5 z-50 w-[min(24rem,calc(100vw-2.5rem))] rounded-2xl border border-amber-400/40 bg-slate-900/95 p-4 shadow-2xl shadow-amber-950/30 backdrop-blur-xl">
@@ -283,8 +265,17 @@ const submitManual = () => {
                             >
                                 <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200" :class="isSessionOpen(office.office_id) ? 'translate-x-5' : ''"></span>
                             </button>
-                            <span class="whitespace-nowrap text-[10px] font-bold uppercase tracking-widest" :class="isSessionOpen(office.office_id) ? 'text-amber-400' : 'text-slate-600'">
-                                {{ isSessionOpen(office.office_id) ? 'Open - accepting tickets' : 'Closed - not accepting tickets' }}
+                            <button
+                                @click="pauseSession(office.office_id)"
+                                class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded-lg border transition"
+                                :class="isSessionPaused(office.office_id)
+                                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20'
+                                    : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600 hover:bg-slate-800'"
+                            >
+                                {{ isSessionPaused(office.office_id) ? 'Resume' : 'Pause' }}
+                            </button>
+                            <span class="whitespace-nowrap text-[10px] font-bold uppercase tracking-widest" :class="isSessionPaused(office.office_id) ? 'text-amber-400' : isSessionOpen(office.office_id) ? 'text-amber-400' : 'text-slate-600'">
+                                {{ isSessionPaused(office.office_id) ? 'Paused - tickets held' : isSessionOpen(office.office_id) ? 'Open - accepting tickets' : 'Closed - not accepting tickets' }}
                             </span>
                         </div>
                     </div>
@@ -294,13 +285,25 @@ const submitManual = () => {
 
                     <!-- Currently Serving -->
                     <div class="lg:col-span-1 bg-slate-900/60 rounded-2xl border border-slate-800/80 backdrop-blur-xl p-6">
-                        <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4">Currently Serving</h3>
+                        <div class="mb-4 flex items-center justify-between gap-3">
+                            <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500">{{ selectedOffice ? `${selectedOffice.name} Monitor` : 'Currently Serving' }}</h3>
+                            <a
+                                v-if="selectedOffice"
+                                :href="route('queue.monitor', selectedOffice.office_id)"
+                                target="_blank"
+                                rel="noopener"
+                                class="shrink-0 text-xs font-bold text-teal-300 transition hover:text-teal-200"
+                            >
+                                Open Display
+                            </a>
+                        </div>
 
                         <div v-if="servingQueue && servingQueue.length > 0" class="space-y-4">
                             <div v-for="active in servingQueue" :key="active.request_id" class="p-6 bg-amber-500/5 border border-amber-500/20 rounded-2xl text-center">
                                 <div class="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Ticket Number</div>
                                 <div class="text-5xl font-black text-amber-400 my-2">#{{ active.queue_number }}</div>
                                 <div class="text-sm font-bold text-slate-300 mb-1">{{ active.service?.service_name }}</div>
+                                <div v-if="active.transaction?.counter_number" class="mb-2 text-xs font-black uppercase tracking-wider text-teal-300">Window {{ active.transaction.counter_number }}</div>
                                 <div class="text-[10px] font-mono text-slate-500 mb-4">{{ active.tracking_code }}</div>
 
                                 <div class="flex flex-col space-y-2">
@@ -450,72 +453,104 @@ const submitManual = () => {
     display: block;
 }
 
+.receipt-header {
+    border-bottom: 1px dashed rgba(15, 23, 42, 0.2);
+    padding-bottom: 0.6rem;
+}
+
+.receipt-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.75rem;
+    color: #334155;
+    line-height: 1.5;
+}
+
+.receipt-row span {
+    font-weight: 600;
+    color: #475569;
+}
+
+.receipt-row strong {
+    font-weight: 800;
+    color: #0f172a;
+    text-align: right;
+    max-width: 56%;
+}
+
+body.receipt-print-mode > *:not(.receipt-ticket-container) {
+    display: none !important;
+}
+
+body.receipt-print-mode .receipt-ticket-container {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #fff !important;
+    z-index: 99999 !important;
+}
+
+body.receipt-print-mode .walk-in-print-ticket {
+    width: 80mm !important;
+    max-width: 80mm !important;
+    min-width: 80mm !important;
+    margin: 0 auto !important;
+    padding: 10px !important;
+    border: 1px solid #111827 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #111827 !important;
+    text-align: left !important;
+}
+
 @media print {
     @page {
         margin: 0;
         size: 80mm auto;
     }
 
-    html, body {
-        margin: 0 !important;
-        padding: 0 !important;
-        background: #fff !important;
-    }
-
-    body * {
+    body:not(.receipt-print-mode) {
         display: none !important;
     }
 
-    .receipt-ticket-container,
-    .receipt-ticket-container * {
-        display: block !important;
-        visibility: visible !important;
-    }
-
-    .receipt-ticket-container {
-        position: static !important;
-        width: 80mm !important;
-        max-width: 80mm !important;
-        min-width: 80mm !important;
+    body.receipt-print-mode {
+        background: #fff !important;
         margin: 0 !important;
         padding: 0 !important;
-        background: transparent !important;
     }
 
-    .walk-in-print-ticket {
+    body.receipt-print-mode > *:not(.receipt-ticket-container) {
+        display: none !important;
+    }
+
+    body.receipt-print-mode .receipt-ticket-container {
+        position: static !important;
+        display: block !important;
         width: 80mm !important;
         max-width: 80mm !important;
-        min-width: 80mm !important;
-        margin: 0 !important;
-        padding: 10px !important;
-        border: 1px solid #111827 !important;
-        border-radius: 0 !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+        background: transparent !important;
         box-shadow: none !important;
+    }
+
+    body.receipt-print-mode .walk-in-print-ticket {
+        width: 80mm !important;
+        min-width: 80mm !important;
+        max-width: 80mm !important;
+        margin: 0 !important;
+        padding: 12px !important;
+        border: 1px solid #111827 !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
         background: #fff !important;
         color: #111827 !important;
-        text-align: center !important;
-    }
-
-    .walk-in-print-ticket > * {
-        color: #111827 !important;
-        background: transparent !important;
-    }
-
-    .walk-in-print-ticket .text-7xl {
-        font-size: 32px !important;
-        line-height: 1.1 !important;
-    }
-
-    .walk-in-print-ticket .text-xs {
-        font-size: 9px !important;
-    }
-
-    .walk-in-print-ticket .text-sm {
-        font-size: 10px !important;
-    }
-
-    .walk-in-print-ticket .font-mono {
-        font-size: 11px !important;
+        text-align: left !important;
     }
 
     .walk-in-print-ticket .print\:hidden {

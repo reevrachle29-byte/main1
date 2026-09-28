@@ -28,7 +28,7 @@ const submit = () => {
 
     <div class="relative min-h-screen flex items-center justify-center bg-slate-950 font-sans overflow-hidden">
         <!-- Video Background -->
-        <video autoplay loop muted playsinline preload="auto" class="absolute inset-0 w-full h-full object-cover" src="/videos/welcome.mov"></video>
+        <video autoplay loop muted playsinline preload="auto" class="absolute inset-0 w-full h-full object-cover" src="/videos/welcome.mp4"></video>
         <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-[2px]"></div>
 
         <div class="absolute inset-0 z-0 overflow-hidden pointer-events-none">

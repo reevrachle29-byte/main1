@@ -16,7 +16,7 @@ const activeOfficeId = ref(null);
 const isDeleteModalOpen = ref(false);
 const officeToDelete = ref(null);
 
-const form = useForm({ name: '', user_id: '', is_active: true });
+const form = useForm({ name: '', user_id: '', window_count: 1, is_active: true });
 
 const getOfficeId = (office) => office?.office_id ?? office?.id;
 const closeModal = () => { isModalOpen.value = false; form.reset(); form.clearErrors(); activeOfficeId.value = null; };
@@ -30,6 +30,7 @@ const openEditModal = (office) => {
     form.clearErrors();
     form.name = office.name || '';
     form.user_id = office.user_id ?? (office.user ? office.user.user_id : '');
+    form.window_count = office.window_count || 1;
     form.is_active = Boolean(office.is_active);
     isModalOpen.value = true;
 };
@@ -70,6 +71,7 @@ const deleteOffice = () => {
                                 <th class="px-5 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">ID</th>
                                 <th class="px-5 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Name</th>
                                 <th class="px-5 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Staff</th>
+                                <th class="px-5 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Windows</th>
                                 <th class="px-5 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Status</th>
                                 <th class="px-5 py-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Actions</th>
                             </tr>
@@ -79,16 +81,18 @@ const deleteOffice = () => {
                                 <td class="px-5 py-3.5 text-sm text-slate-500 font-mono">#{{ getOfficeId(office) }}</td>
                                 <td class="px-5 py-3.5 font-semibold text-white text-sm">{{ office.name }}</td>
                                 <td class="px-5 py-3.5 text-sm text-slate-400">{{ office.user ? office.user.name : 'Unassigned' }}</td>
+                                <td class="px-5 py-3.5 text-sm text-slate-300">{{ office.window_count || 1 }}</td>
                                 <td class="px-5 py-3.5">
                                     <span :class="office.is_active ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'" class="px-2.5 py-1 text-[10px] font-bold rounded-full uppercase border">{{ office.is_active ? 'Active' : 'Inactive' }}</span>
                                 </td>
                                 <td class="px-5 py-3.5 text-right text-sm space-x-3">
+                                    <a :href="`/monitor/${getOfficeId(office)}`" target="_blank" class="text-teal-400 hover:text-teal-300 font-semibold text-sm">Monitor</a>
                                     <button @click="openEditModal(office)" class="text-amber-400 hover:text-amber-300 font-semibold text-sm">Edit</button>
                                     <button @click="openDeleteModal(office)" class="text-red-400 hover:text-red-300 font-semibold text-sm">Delete</button>
                                 </td>
                             </tr>
                             <tr v-if="!offices || offices.length === 0">
-                                <td colspan="5" class="px-5 py-12 text-center text-sm text-slate-600">No offices configured.</td>
+                                <td colspan="6" class="px-5 py-12 text-center text-sm text-slate-600">No offices configured.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -120,6 +124,12 @@ const deleteOffice = () => {
                         <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Office Name</label>
                         <input v-model="form.name" type="text" required class="w-full rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-amber-500" placeholder="e.g. Registrar" />
                         <p v-if="form.errors.name" class="mt-1 text-xs text-rose-400">{{ form.errors.name }}</p>
+                    </div>
+
+                    <div>
+                        <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Number of Windows</label>
+                        <input v-model.number="form.window_count" type="number" min="1" max="30" required class="w-full rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-amber-500" />
+                        <p v-if="form.errors.window_count" class="mt-1 text-xs text-rose-400">{{ form.errors.window_count }}</p>
                     </div>
 
                     <div>

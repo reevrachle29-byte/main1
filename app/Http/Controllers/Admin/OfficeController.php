@@ -40,6 +40,7 @@ class OfficeController extends Controller
         $validated = $request->validate([
             'name'      => 'required|string|max:255|unique:offices,name',
             'user_id'   => 'nullable|exists:users,user_id',
+            'window_count' => 'required|integer|min:1|max:30',
             'is_active' => 'boolean',
         ]);
 
@@ -64,6 +65,7 @@ class OfficeController extends Controller
         $validated = $request->validate([
             'name'      => 'required|string|max:255|unique:offices,name,' . $officeKey . ',' . $office->getKeyName(),
             'user_id'   => 'nullable|exists:users,user_id',
+            'window_count' => 'required|integer|min:1|max:30',
             'is_active' => 'boolean',
         ]);
 

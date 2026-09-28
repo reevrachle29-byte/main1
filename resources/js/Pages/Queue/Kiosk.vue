@@ -7,6 +7,10 @@ const props = defineProps({
     offices: {
         type: Array,
         default: () => []
+    },
+    walk_in_mode: {
+        type: Boolean,
+        default: false,
     }
 });
 
@@ -132,6 +136,10 @@ const closeCancelConfirm = () => {
 
 const resetKiosk = () => window.location.assign(route('queue.kiosk'));
 const printTicket = () => window.print();
+const kioskTitle = computed(() => props.walk_in_mode ? 'Walk-in Customer Queue' : 'Digital Ticketing Terminal');
+const kioskSubtitle = computed(() => props.walk_in_mode
+    ? 'Select your service and print your ticket at this kiosk.'
+    : 'Choose the office transaction you need to issue your queue ticket number.');
 </script>
 
 <template>
@@ -145,8 +153,8 @@ const printTicket = () => window.print();
         </div>
 
         <!-- Header Bar -->
-        <header class="relative z-10 w-full max-w-7xl mx-auto px-6 py-6 flex justify-between items-center border-b border-slate-800/80">
-            <a href="/" class="flex items-center gap-3.5" aria-label="Go to CPAC QUEUE-MMS main page">
+        <header class="relative z-10 w-full max-w-7xl mx-auto px-6 py-6 grid grid-cols-1 gap-4 border-b border-slate-800/80 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
+            <a href="/" class="flex items-center justify-center gap-3.5 lg:justify-self-start" aria-label="Go to CPAC QUEUE-MMS main page">
                 <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-400 via-teal-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20 ring-1 ring-white/20">
                     <span class="font-black text-slate-950 text-2xl tracking-tighter">Q</span>
                 </div>
@@ -159,14 +167,10 @@ const printTicket = () => window.print();
             </a>
 
             <!-- Quick Action Links -->
-            <div class="flex items-center gap-3">
-                <button
-                    type="button"
-                    @click="showHelpModal = true"
-                    class="px-4 py-2 text-xs font-bold text-amber-300 hover:text-amber-200 hover:bg-amber-500/10 rounded-xl transition-all border border-amber-500/30 flex items-center gap-2"
-                >
-                    Need Help?
-                </button>
+            <div class="flex flex-wrap items-center justify-center gap-3 lg:col-start-3 lg:justify-self-end">
+                <a href="/kiosk/walk-in" class="px-4 py-2 text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition flex items-center gap-2">
+                    For Walk-in Ticket
+                </a>
                 <a href="/monitor" class="px-4 py-2 text-xs font-bold text-slate-300 hover:text-amber-400 hover:bg-slate-900 rounded-xl transition-all border border-transparent hover:border-slate-800 flex items-center gap-2">
                     Monitor Screen
                 </a>
@@ -198,7 +202,7 @@ const printTicket = () => window.print();
                     </div>
                     <div class="flex gap-3">
                         <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500/15 font-black text-amber-300">3</span>
-                        <p>Staff can create and print your ticket for you.</p>
+                        <p>Use this kiosk to select your service and print your own ticket.</p>
                     </div>
                 </div>
 
@@ -216,14 +220,17 @@ const printTicket = () => window.print();
             <div class="text-center max-w-2xl mx-auto mb-10 space-y-3">
                 <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900/80 border border-amber-500/30 text-amber-400 text-xs font-bold tracking-wider uppercase shadow-xl backdrop-blur-md">
                     <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
-                    Digital Ticketing Terminal
+                    {{ kioskTitle }}
                 </div>
                 <h2 class="text-4xl sm:text-5xl font-black tracking-tight text-white">
                     Select a <span class="bg-gradient-to-r from-amber-400 via-teal-300 to-amber-500 bg-clip-text text-transparent">Service</span>
                 </h2>
                 <p class="text-slate-400 text-sm sm:text-base">
-                    Choose the office transaction you need to issue your queue ticket number.
+                    {{ kioskSubtitle }}
                 </p>
+                <div v-if="walk_in_mode" class="mt-4 inline-flex items-center justify-center rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-amber-300">
+                    Walk-in Customers Only
+                </div>
             </div>
 
             <div v-if="errorMessage" class="w-full max-w-lg mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-center text-red-400 text-sm font-semibold">
@@ -249,7 +256,7 @@ const printTicket = () => window.print();
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <button type="button" @click="copyTrackingCode" class="rounded-xl bg-slate-800 px-4 py-3 text-sm font-bold text-slate-200 hover:bg-slate-700">Copy code</button>
-                    <button type="button" @click="printTicket" class="rounded-xl bg-teal-600 px-4 py-3 text-sm font-bold text-white hover:bg-teal-700">Print</button>
+                    <button v-if="walk_in_mode" type="button" @click="printTicket" class="rounded-xl bg-teal-600 px-4 py-3 text-sm font-bold text-white hover:bg-teal-700">Print</button>
                     <button type="button" @click="cancelCurrentTicket" class="rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-sm font-bold text-slate-200 hover:bg-slate-700 hover:text-white transition">Cancel</button>
                 </div>
             </div>
@@ -346,6 +353,13 @@ const printTicket = () => window.print();
 
         <!-- Footer -->
         <footer class="relative z-10 w-full max-w-7xl mx-auto px-6 py-6 border-t border-slate-800/80 text-center text-xs text-slate-500">
+            <button
+                type="button"
+                @click="showHelpModal = true"
+                class="mb-4 inline-flex items-center rounded-xl border border-amber-500/30 px-4 py-2 text-xs font-bold text-amber-300 transition-all hover:bg-amber-500/10 hover:text-amber-200"
+            >
+                Need Help?
+            </button>
             <p>&copy; 2026 QUEUE-MMS. All Rights Reserved.</p>
         </footer>
 

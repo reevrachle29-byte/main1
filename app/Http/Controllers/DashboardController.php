@@ -41,7 +41,46 @@ class DashboardController extends Controller
             ->orderBy('requested_at', 'desc')
             ->get();
 
-        $myQueueRequests->each(function (QueueRequest $ticket) {
+        $waitingServiceIds = $myQueueRequests
+            ->where('status', 'waiting')
+            ->pluck('service_id')
+            ->unique()
+            ->values();
+
+        $waitingPositions = [];
+
+        if (!$waitingServiceIds->isEmpty()) {
+            $waitingTickets = QueueRequest::whereIn('service_id', $waitingServiceIds)
+                ->where('status', 'waiting')
+                ->orderBy('service_id')
+                ->orderByRaw("CASE WHEN category IN ('pwd', 'senior') THEN 1 ELSE 2 END ASC")
+                ->orderBy('requested_at', 'asc')
+                ->get();
+
+            foreach ($waitingTickets as $ticket) {
+                $waitingPositions[$ticket->request_id] = $ticket->queue_number;
+            }
+
+            $orderedQueueByService = $waitingTickets->groupBy('service_id');
+            foreach ($orderedQueueByService as $serviceId => $tickets) {
+                $position = 1;
+                foreach ($tickets as $ticket) {
+                    $waitingPositions[$ticket->request_id] = $position;
+                    $position++;
+                }
+            }
+        }
+
+        $averageWaitByService = DB::table('queue_transactions')
+            ->join('queue_requests', 'queue_requests.request_id', '=', 'queue_transactions.request_id')
+            ->whereIn('queue_requests.service_id', $waitingServiceIds)
+            ->where('queue_requests.status', 'completed')
+            ->whereNotNull('queue_transactions.wait_minutes')
+            ->select('queue_requests.service_id', DB::raw('AVG(queue_transactions.wait_minutes) as avg_wait_minutes'))
+            ->groupBy('queue_requests.service_id')
+            ->pluck('avg_wait_minutes', 'service_id');
+
+        $myQueueRequests->each(function (QueueRequest $ticket) use ($waitingPositions, $averageWaitByService) {
             if (!in_array($ticket->status, ['waiting', 'called', 'serving'], true)) {
                 return;
             }
@@ -52,35 +91,13 @@ class DashboardController extends Controller
                 return;
             }
 
-            $priority = match ($ticket->category) {
-                'pwd', 'senior' => 1,
-                default => 2,
-            };
+            $queuePosition = (int) ($waitingPositions[$ticket->request_id] ?? 1);
+            $ticket->queue_position = $queuePosition;
+            $ticket->estimated_wait_minutes = max(3, $queuePosition * 3);
 
-            $ahead = QueueRequest::where('service_id', $ticket->service_id)
-                ->where('status', 'waiting')
-                ->where(function ($query) use ($ticket, $priority) {
-                    $query->whereRaw(
-                        "CASE WHEN category IN ('pwd', 'senior') THEN 1 ELSE 2 END < ?",
-                        [$priority]
-                    )->orWhere(function ($samePriority) use ($ticket, $priority) {
-                        $samePriority->whereRaw(
-                            "CASE WHEN category IN ('pwd', 'senior') THEN 1 ELSE 2 END = ?",
-                            [$priority]
-                        )->where('requested_at', '<', $ticket->requested_at);
-                    });
-                })
-                ->count();
-
-            $averageWait = DB::table('queue_transactions')
-                ->join('queue_requests', 'queue_requests.request_id', '=', 'queue_transactions.request_id')
-                ->where('queue_requests.service_id', $ticket->service_id)
-                ->where('queue_requests.status', 'completed')
-                ->whereNotNull('queue_transactions.wait_minutes')
-                ->avg('queue_transactions.wait_minutes');
-
-            $ticket->queue_position = $ahead + 1;
-            $ticket->estimated_wait_minutes = round(($ahead + 1) * ($averageWait ?: 10));
+            if (isset($averageWaitByService[$ticket->service_id])) {
+                $ticket->estimated_wait_minutes = max($ticket->estimated_wait_minutes, (int) round($queuePosition * (float) $averageWaitByService[$ticket->service_id] / 5));
+            }
         });
 
         $waitingCount = QueueRequest::where('status', 'waiting')->count();
@@ -158,6 +175,10 @@ class DashboardController extends Controller
             ->whereIn('office_id', $officeIds)
             ->get();
 
+        $pausedSessions = QueueSession::where('status', 'paused')
+            ->whereIn('office_id', $officeIds)
+            ->get();
+
         $waitingQueue = QueueRequest::where('status', 'waiting')
             ->whereIn('service_id', $serviceIds)
             ->with('service')
@@ -166,7 +187,7 @@ class DashboardController extends Controller
 
         $servingQueue = QueueRequest::whereIn('status', ['called', 'serving'])
             ->whereIn('service_id', $serviceIds)
-            ->with('service')
+            ->with(['service', 'transaction'])
             ->get();
 
         $recentTicketHistory = QueueRequest::whereIn('service_id', $serviceIds)
@@ -176,7 +197,7 @@ class DashboardController extends Controller
             ->take(10)
             ->get();
 
-        $selectedOffice = $targetOfficeId ? $offices->first() : null;
+        $selectedOffice = $targetOfficeId ? $offices->first() : (!$user->isAdmin() ? $offices->first() : null);
 
         $officeNotifications = Notification::whereIn('user_id', $offices->pluck('user_id')->filter())
             ->where('type', 'office')
@@ -190,6 +211,7 @@ class DashboardController extends Controller
             'recentTicketHistory' => $recentTicketHistory,
             'offices' => $offices,
             'openSessions' => $openSessions,
+            'pausedSessions' => $pausedSessions,
             'selectedOffice' => $selectedOffice,
             'officeNotifications' => $officeNotifications,
         ]);
@@ -197,13 +219,26 @@ class DashboardController extends Controller
 
     public function callNext(Request $request)
     {
+        $validated = $request->validate([
+            'office_id' => 'nullable|integer|exists:offices,office_id',
+            'counter_number' => 'required|integer|min:1',
+        ]);
         $serviceIds = $this->accessibleServiceIds(Auth::user());
+        if (!empty($validated['office_id'])) {
+            $office = Office::findOrFail($validated['office_id']);
+            abort_if($validated['counter_number'] > $office->window_count, 422, 'The selected window is not configured for this office.');
+            $serviceIds = Service::where('office_id', $office->office_id)
+                ->whereIn('service_id', $serviceIds)
+                ->pluck('service_id')
+                ->all();
+        }
 
         // Priority order: PWD > Senior > Regular
         // Within each category, order by requested_at (FIFO)
-        [$nextTicket, $transaction] = DB::transaction(function () use ($serviceIds) {
+        [$nextTicket, $transaction] = DB::transaction(function () use ($serviceIds, $validated) {
             $nextTicket = QueueRequest::where('status', 'waiting')
                 ->whereIn('service_id', $serviceIds)
+                ->with('service.office')
                 ->orderByRaw("CASE WHEN category IN ('pwd', 'senior') THEN 1 ELSE 2 END")
                 ->orderBy('requested_at', 'asc')
                 ->lockForUpdate()
@@ -213,11 +248,18 @@ class DashboardController extends Controller
                 return [null, null];
             }
 
+            if ($validated['counter_number'] > ($nextTicket->service?->office?->window_count ?? 0)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'counter_number' => 'The selected window is not configured for this office.',
+                ]);
+            }
+
             $nextTicket->update(['status' => 'called']);
             $transaction = QueueTransaction::create([
                 'request_id' => $nextTicket->request_id,
                 'served_by' => Auth::user()->user_id,
                 'called_at' => Carbon::now(),
+                'counter_number' => $validated['counter_number'],
             ]);
 
             return [$nextTicket, $transaction];
@@ -231,7 +273,7 @@ class DashboardController extends Controller
             'transaction_id' => $transaction->transaction_id,
             'user_id' => $nextTicket->user_id,
             'type' => 'display',
-            'message' => "Now serving ticket #{$nextTicket->queue_number}",
+            'message' => "Now serving ticket #{$nextTicket->queue_number}. Please proceed to Window {$validated['counter_number']}.",
             'sent_at' => Carbon::now(),
         ]);
 
@@ -239,7 +281,7 @@ class DashboardController extends Controller
             'transaction_id' => $transaction->transaction_id,
             'user_id' => $nextTicket->user_id,
             'type' => 'audio',
-            'message' => "Now serving ticket number {$nextTicket->queue_number}",
+            'message' => "Now serving ticket number {$nextTicket->queue_number}. Please proceed to Window {$validated['counter_number']}.",
             'sent_at' => Carbon::now(),
         ]);
 

@@ -11,7 +11,7 @@ class QueueTransaction extends Model
     // Disable timestamps since migration doesn't include created_at/updated_at
     public $timestamps = false;
 
-    protected $fillable = ['request_id', 'served_by', 'called_at', 'completed_at', 'wait_minutes'];
+    protected $fillable = ['request_id', 'served_by', 'called_at', 'completed_at', 'wait_minutes', 'counter_number'];
 
     public function queueRequest()
     {

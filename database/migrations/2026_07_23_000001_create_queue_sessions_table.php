@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id('session_id');
             $table->foreignId('office_id')->constrained('offices', 'office_id')->onDelete('cascade');
             $table->foreignId('user_id')->constrained('users', 'user_id')->onDelete('cascade');
-            $table->enum('status', ['open', 'closed'])->default('open');
+            $table->enum('status', ['open', 'paused', 'closed'])->default('open');
             $table->timestamp('opened_at')->nullable();
             $table->timestamp('closed_at')->nullable();
             $table->timestamps();

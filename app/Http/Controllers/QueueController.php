@@ -19,6 +19,16 @@ class QueueController extends Controller
 {
     public function showKiosk()
     {
+        return $this->renderKioskPage(false);
+    }
+
+    public function showWalkInKiosk()
+    {
+        return $this->renderKioskPage(true);
+    }
+
+    protected function renderKioskPage(bool $walkInMode): \Illuminate\Http\Response|\Inertia\Response
+    {
         $openSessionOfficeIds = QueueSession::where('status', 'open')
             ->pluck('office_id')
             ->toArray();
@@ -50,7 +60,8 @@ class QueueController extends Controller
         });
 
         return Inertia::render('Queue/Kiosk', [
-            'offices' => $offices
+            'offices' => $offices,
+            'walk_in_mode' => $walkInMode,
         ]);
     }
 
@@ -74,13 +85,13 @@ class QueueController extends Controller
         }
 
         $currentUser = Auth::user();
+        $isExplicitAdminTestAccount = $currentUser
+            && strtolower((string) ($currentUser->email ?? '')) === 'admin@cpac.edu.ph';
 
-        if ($currentUser && !$currentUser->isStudent()) {
-            $redirectRoute = $currentUser->isEmployee() && $currentUser->office_id
-                ? route('dashboard.staff', ['officeId' => $currentUser->office_id])
-                : route('dashboard');
+        if ($currentUser && !$currentUser->isStudent() && !$currentUser->isAdmin() && !$isExplicitAdminTestAccount) {
+            $redirectRoute = url('/kiosk/walk-in');
 
-            return redirect()->to($redirectRoute)->with('error', 'Only student accounts can request queue tickets.');
+            return redirect()->to($redirectRoute)->with('error', 'This kiosk is for walk-in customers. Please use the staff queue console for office operations.');
         }
 
         if ($currentUser) {
@@ -95,10 +106,12 @@ class QueueController extends Controller
 
         [$newQueue, $nextNumber, $trackingCode] = DB::transaction(function () use ($request, $currentUser) {
             $sequenceDate = today()->toDateString();
+            $startingNumber = 100;
+            $maxNumber = 600;
 
             DB::table('queue_sequences')->insertOrIgnore([
                 'sequence_date' => $sequenceDate,
-                'last_number' => 99,
+                'last_number' => $startingNumber - 1,
             ]);
 
             $sequence = DB::table('queue_sequences')
@@ -106,6 +119,9 @@ class QueueController extends Controller
                 ->lockForUpdate()
                 ->first();
             $nextNumber = $sequence->last_number + 1;
+            if ($nextNumber > $maxNumber) {
+                $nextNumber = $startingNumber;
+            }
             DB::table('queue_sequences')->where('sequence_date', $sequenceDate)->update(['last_number' => $nextNumber]);
 
             $trackingCode = 'QV-' . strtoupper(Str::random(6));
@@ -157,7 +173,7 @@ class QueueController extends Controller
             ->whereNotNull('queue_transactions.wait_minutes')
             ->avg('queue_transactions.wait_minutes');
 
-        $estimatedWait = $position > 0 && $avgWait ? round($position * $avgWait) : null;
+        $estimatedWait = $position > 0 ? ($position * 3) : 3;
 
         return redirect()->back()
             ->with('success', "Ticket #{$nextNumber} generated.")
@@ -215,9 +231,14 @@ class QueueController extends Controller
         $category = $request->input('category', 'regular');
         [$newQueue, $nextNumber, $trackingCode] = DB::transaction(function () use ($request, $category) {
             $sequenceDate = today()->toDateString();
-            DB::table('queue_sequences')->insertOrIgnore(['sequence_date' => $sequenceDate, 'last_number' => 99]);
+            $startingNumber = 100;
+            $maxNumber = 600;
+            DB::table('queue_sequences')->insertOrIgnore(['sequence_date' => $sequenceDate, 'last_number' => $startingNumber - 1]);
             $sequence = DB::table('queue_sequences')->where('sequence_date', $sequenceDate)->lockForUpdate()->first();
             $nextNumber = $sequence->last_number + 1;
+            if ($nextNumber > $maxNumber) {
+                $nextNumber = $startingNumber;
+            }
             DB::table('queue_sequences')->where('sequence_date', $sequenceDate)->update(['last_number' => $nextNumber]);
             $trackingCode = 'QV-' . strtoupper(Str::random(6));
             $newQueue = QueueRequest::create([
@@ -258,30 +279,72 @@ class QueueController extends Controller
                 'queue_number' => $nextNumber,
                 'tracking_code' => $trackingCode,
                 'position' => $position,
-                'estimated_wait' => $position * 10,
+                'estimated_wait' => max(3, $position * 3),
                 'service' => $service->service_name,
                 'office' => $service->office?->name,
                 'walk_in' => true,
             ]);
     }
 
-    public function showDisplayMonitor()
+    public function printWalkInReceipt(Request $request)
     {
+        $ticket = [
+            'queue_number' => (int) $request->query('queue_number', 0),
+            'tracking_code' => $request->query('tracking_code', 'QV-000000'),
+            'position' => (int) $request->query('position', 1),
+            'estimated_wait' => (int) $request->query('estimated_wait', 0),
+            'service' => $request->query('service', 'Service'),
+            'office' => $request->query('office', 'Office'),
+            'walk_in' => true,
+        ];
+
+        return Inertia::render('Queue/WalkInPrint', [
+            'ticket' => $ticket,
+        ]);
+    }
+
+    public function showDisplayMonitor(?int $officeId = null)
+    {
+        $monitorOffice = $officeId ? Office::findOrFail($officeId) : null;
+        $officeFilter = fn ($query) => $query->whereHas('service', fn ($serviceQuery) => $serviceQuery->where('office_id', $monitorOffice->office_id));
+
         $activeTickets = QueueRequest::where('status', 'called')
-            ->with(['service.office'])
+            ->when($monitorOffice, $officeFilter)
+            ->with(['service.office', 'transaction'])
             ->latest('requested_at')
             ->take(6)
             ->get();
 
         $waitingTickets = QueueRequest::where('status', 'waiting')
+            ->when($monitorOffice, $officeFilter)
             ->with(['service.office'])
+            ->orderByRaw("CASE WHEN category IN ('pwd', 'senior') THEN 1 ELSE 2 END")
             ->orderBy('requested_at', 'asc')
             ->take(5)
             ->get();
 
+        $nextTicket = QueueRequest::where('status', 'waiting')
+            ->when($monitorOffice, $officeFilter)
+            ->with(['service.office'])
+            ->orderByRaw("CASE WHEN category IN ('pwd', 'senior') THEN 1 ELSE 2 END")
+            ->orderBy('requested_at', 'asc')
+            ->first();
+
+        $sessionQuery = QueueSession::where('status', 'open');
+        if ($monitorOffice) {
+            $sessionQuery->where('office_id', $monitorOffice->office_id);
+        }
+        $officeStatus = $sessionQuery->exists()
+            ? 'Open'
+            : (QueueSession::when($monitorOffice, fn ($query) => $query->where('office_id', $monitorOffice->office_id))
+                ->where('status', 'paused')->exists() ? 'Paused' : 'Closed');
+
         return Inertia::render('Queue/Monitor', [
             'activeTickets' => $activeTickets,
             'waitingTickets' => $waitingTickets,
+            'nextTicket' => $nextTicket,
+            'officeStatus' => $officeStatus,
+            'officeName' => $monitorOffice?->name,
         ]);
     }
 

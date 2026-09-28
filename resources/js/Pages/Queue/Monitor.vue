@@ -10,15 +10,27 @@ const props = defineProps({
     waitingTickets: {
         type: Array,
         default: () => []
-    }
+    },
+    nextTicket: {
+        type: Object,
+        default: null
+    },
+    officeStatus: {
+        type: String,
+        default: 'Closed'
+    },
+    officeName: { type: String, default: null },
 });
 
 let pollInterval = null;
 
-// Poll backend every 3 seconds for newly called tickets
+// Poll backend every 3 seconds for the live queue board state
 onMounted(() => {
     pollInterval = setInterval(() => {
-        router.reload({ only: ['activeTickets', 'waitingTickets'], preserveScroll: true });
+        router.reload({
+            only: ['activeTickets', 'waitingTickets', 'nextTicket', 'officeStatus'],
+            preserveScroll: true,
+        });
     }, 3000);
 });
 
@@ -67,53 +79,69 @@ const secondaryCalling = computed(() => {
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                     <span class="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
                 </span>
-                <span class="text-xs font-bold text-slate-300 uppercase tracking-widest">Live Updates</span>
+                <span class="text-xs font-bold text-slate-300 uppercase tracking-widest">{{ officeName ? `${officeName} • ${officeStatus}` : `${officeStatus} • Live Updates` }}</span>
             </div>
         </header>
 
         <!-- Main TV Display Area -->
         <main class="relative z-10 w-full max-w-7xl mx-auto px-8 py-8 flex-grow flex flex-col gap-8">
             
-            <!-- Hero Section: Currently Called / Now Serving Number -->
-            <div v-if="currentCalling" class="relative w-full p-8 rounded-3xl bg-gradient-to-b from-slate-900/90 to-slate-950/90 border-2 border-amber-500/40 backdrop-blur-2xl shadow-2xl shadow-amber-500/10 flex flex-col lg:flex-row items-center justify-between gap-6 overflow-hidden">
-                <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
+                <template v-if="currentCalling">
+                    <div class="relative w-full p-8 rounded-3xl bg-gradient-to-b from-slate-900/90 to-slate-950/90 border-2 border-amber-500/40 backdrop-blur-2xl shadow-2xl shadow-amber-500/10 flex flex-col lg:flex-row items-center justify-between gap-6 overflow-hidden">
+                        <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-                <div class="space-y-2 text-center lg:text-left">
-                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-black uppercase tracking-widest">
-                        <svg class="w-4 h-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.536a5 5 0 001.414 1.414m2.828-9.9a9 9 0 010 12.728"></path></svg>
-                        Now Calling
-                    </div>
-                    <h2 class="text-2xl sm:text-3xl font-bold text-slate-300">
-                        {{ currentCalling.service?.office?.name || currentCalling.service?.service_name || 'Counter Service' }}
-                    </h2>
-                    <p class="text-slate-400 text-sm">Please proceed to your respective counter window.</p>
-                </div>
+                        <div class="space-y-2 text-center lg:text-left">
+                            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-black uppercase tracking-widest">
+                                <svg class="w-4 h-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.536a5 5 0 001.414 1.414m2.828-9.9a9 9 0 010 12.728"></path></svg>
+                                Now Calling
+                            </div>
+                            <h2 class="text-2xl sm:text-3xl font-bold text-slate-300">
+                                {{ currentCalling.service?.office?.name || currentCalling.service?.service_name || 'Counter Service' }}
+                            </h2>
+                            <p class="text-slate-400 text-sm">Please proceed to your respective counter window.</p>
+                        </div>
 
-                <!-- Big Callout Ticket Number -->
-                <div class="flex items-center gap-6 bg-slate-950/80 border border-amber-500/30 px-8 py-4 rounded-2xl shadow-inner">
-                    <div class="text-center">
-                        <span class="block text-xs font-bold text-slate-500 uppercase tracking-widest">Ticket No.</span>
-                        <span class="text-6xl sm:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-teal-300 to-amber-500 tracking-wider">
-                            {{ currentCalling.queue_number || currentCalling.request_id || '---' }}
-                        </span>
+                        <div class="flex items-center gap-6 bg-slate-950/80 border border-amber-500/30 px-8 py-4 rounded-2xl shadow-inner">
+                            <div class="text-center">
+                                <span class="block text-xs font-bold text-slate-500 uppercase tracking-widest">Ticket No.</span>
+                                <span class="text-6xl sm:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-teal-300 to-amber-500 tracking-wider">
+                                    {{ currentCalling.queue_number || currentCalling.request_id || '---' }}
+                                </span>
+                            </div>
+                            <div class="h-12 w-px bg-slate-800 hidden sm:block"></div>
+                            <div class="text-center hidden sm:block">
+                                <span class="block text-xs font-bold text-slate-500 uppercase tracking-widest">Counter</span>
+                                <span class="text-3xl font-black text-white">
+                                    {{ currentCalling.transaction?.counter_number ? `Window ${currentCalling.transaction.counter_number}` : 'Window not assigned' }}
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="h-12 w-px bg-slate-800 hidden sm:block"></div>
-                    <div class="text-center hidden sm:block">
-                        <span class="block text-xs font-bold text-slate-500 uppercase tracking-widest">Counter</span>
-                        <span class="text-3xl font-black text-white">
-                            {{ currentCalling.counter_number || currentCalling.counter || 'Window 1' }}
-                        </span>
+                </template>
+                <template v-else>
+                    <div class="w-full py-20 px-8 text-center bg-slate-900/40 rounded-3xl border border-slate-800/80 backdrop-blur-xl flex flex-col items-center justify-center space-y-3">
+                        <div class="w-16 h-16 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-500 mb-2">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 01-6 0v-1m6 0H9"></path></svg>
+                        </div>
+                        <h3 class="text-2xl font-black text-white">Waiting for Active Calls</h3>
+                        <p class="text-slate-400 text-sm max-w-md">No numbers are currently being called. Next tickets will display automatically once called by staff.</p>
                     </div>
-                </div>
-            </div>
+                </template>
 
-            <!-- Empty State (When no active numbers are called) -->
-            <div v-else class="w-full py-20 px-8 text-center bg-slate-900/40 rounded-3xl border border-slate-800/80 backdrop-blur-xl flex flex-col items-center justify-center space-y-3">
-                <div class="w-16 h-16 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-500 mb-2">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 01-6 0v-1m6 0H9"></path></svg>
+                <div class="w-full rounded-3xl border border-slate-800/80 bg-slate-900/70 p-6 shadow-xl backdrop-blur-xl">
+                    <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500">Next in line</p>
+                    <div v-if="nextTicket" class="mt-4 space-y-3">
+                        <div class="text-5xl font-black text-amber-400">#{{ nextTicket.queue_number }}</div>
+                        <div class="text-sm text-slate-300">
+                            {{ nextTicket.service?.service_name || 'General Service' }}
+                        </div>
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-500">
+                            {{ nextTicket.service?.office?.name || 'Office Counter' }}
+                        </div>
+                    </div>
+                    <div v-else class="mt-6 text-sm text-slate-500">No tickets waiting.</div>
                 </div>
-                <h3 class="text-2xl font-black text-white">Waiting for Active Calls</h3>
-                <p class="text-slate-400 text-sm max-w-md">No numbers are currently being called. Next tickets will display automatically once called by staff.</p>
             </div>
 
             <!-- Multi-Counter Grid Section -->
@@ -148,7 +176,7 @@ const secondaryCalling = computed(() => {
                                 Serving
                             </span>
                             <span class="text-sm font-black text-slate-300">
-                                {{ ticket.counter_number || 'Window 1' }}
+                                {{ ticket.transaction?.counter_number ? `Window ${ticket.transaction.counter_number}` : 'Window not assigned' }}
                             </span>
                         </div>
                     </div>

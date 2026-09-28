@@ -32,6 +32,17 @@ const clearFilters = () => {
     router.get(route('admin.reports.index'));
 };
 
+const exportCsv = () => {
+    const params = new URLSearchParams();
+
+    if (filterForm.office_id) params.set('office_id', filterForm.office_id);
+    if (filterForm.date_from) params.set('date_from', filterForm.date_from);
+    if (filterForm.date_to) params.set('date_to', filterForm.date_to);
+    if (filterForm.status) params.set('status', filterForm.status);
+
+    window.location.href = `${route('admin.reports.export')}?${params.toString()}`;
+};
+
 const statusColor = (status) => {
     const colors = {
         waiting: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
@@ -77,7 +88,7 @@ const statusChartRows = computed(() => {
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
 
                 <!-- Stats -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
                     <div class="p-5 bg-slate-900/60 rounded-2xl border border-slate-800/80 backdrop-blur-xl">
                         <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total Today</p>
                         <p class="text-3xl font-black text-white mt-1">{{ stats.totalToday || 0 }}</p>
@@ -93,6 +104,27 @@ const statusChartRows = computed(() => {
                     <div class="p-5 bg-slate-900/60 rounded-2xl border border-slate-800/80 backdrop-blur-xl">
                         <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Avg. Wait</p>
                         <p class="text-3xl font-black text-teal-400 mt-1">{{ stats.avgWaitMinutes ? Math.round(stats.avgWaitMinutes) + 'm' : '—' }}</p>
+                    </div>
+                    <div class="p-5 bg-slate-900/60 rounded-2xl border border-slate-800/80 backdrop-blur-xl">
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Active Offices</p>
+                        <p class="text-3xl font-black text-indigo-400 mt-1">{{ stats.activeOffices || 0 }}</p>
+                    </div>
+                    <div class="p-5 bg-slate-900/60 rounded-2xl border border-slate-800/80 backdrop-blur-xl">
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Completion</p>
+                        <p class="text-3xl font-black text-emerald-400 mt-1">{{ stats.completionRate || 0 }}%</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="p-5 bg-slate-900/60 rounded-2xl border border-slate-800/80 backdrop-blur-xl">
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Busiest Service</p>
+                        <p class="mt-2 text-2xl font-black text-white">{{ stats.busiestServiceName }}</p>
+                        <p class="mt-1 text-sm text-slate-400">{{ stats.busiestServiceTotal }} tickets today</p>
+                    </div>
+                    <div class="p-5 bg-slate-900/60 rounded-2xl border border-slate-800/80 backdrop-blur-xl">
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Queue Health</p>
+                        <p class="mt-2 text-2xl font-black text-white">{{ stats.waitingNow > 0 ? 'Needs attention' : 'Stable' }}</p>
+                        <p class="mt-1 text-sm text-slate-400">{{ stats.waitingNow }} tickets still waiting</p>
                     </div>
                 </div>
 
@@ -198,6 +230,7 @@ const statusChartRows = computed(() => {
                                 </select>
                             </div>
                             <button type="submit" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold rounded-lg transition">Filter</button>
+                            <button type="button" @click="exportCsv" class="px-4 py-2 border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-sm font-bold rounded-lg transition">Export CSV</button>
                         </form>
                     </div>
 
