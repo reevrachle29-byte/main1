@@ -86,6 +86,7 @@ class QueueController extends Controller
 
         $currentUser = Auth::user();
         $isExplicitAdminTestAccount = $currentUser
+            && $currentUser->isAdmin()
             && strtolower((string) ($currentUser->email ?? '')) === 'admin@cpac.edu.ph';
 
         if ($currentUser && !$currentUser->isStudent() && !$currentUser->isAdmin() && !$isExplicitAdminTestAccount) {
@@ -94,7 +95,7 @@ class QueueController extends Controller
             return redirect()->to($redirectRoute)->with('error', 'This kiosk is for walk-in customers. Please use the staff queue console for office operations.');
         }
 
-        if ($currentUser) {
+        if ($currentUser && !$isExplicitAdminTestAccount) {
             $activeTicketCount = QueueRequest::where('user_id', $currentUser->user_id)
                 ->whereIn('status', ['waiting', 'called', 'serving'])
                 ->count();

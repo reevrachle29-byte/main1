@@ -415,6 +415,64 @@ class AuthenticationTest extends TestCase
         $this->assertEquals(2, QueueRequest::where('user_id', $user->user_id)->whereIn('status', ['waiting', 'called', 'serving'])->count());
     }
 
+    public function test_only_the_explicit_admin_test_account_can_exceed_two_active_tickets(): void
+    {
+        $testAdmin = User::factory()->create([
+            'role' => 'admin',
+            'email' => 'admin@cpac.edu.ph',
+        ]);
+        $otherAdmin = User::factory()->create(['role' => 'admin']);
+        $office = Office::create([
+            'name' => 'Testing Office',
+            'is_active' => true,
+        ]);
+        $service = Service::create([
+            'office_id' => $office->office_id,
+            'service_name' => 'Testing Service',
+            'is_active' => true,
+        ]);
+        QueueSession::create([
+            'office_id' => $office->office_id,
+            'user_id' => $testAdmin->user_id,
+            'status' => 'open',
+            'opened_at' => now(),
+        ]);
+
+        foreach ([$testAdmin, $otherAdmin] as $user) {
+            foreach ([100, 101] as $queueNumber) {
+                QueueRequest::create([
+                    'user_id' => $user->user_id,
+                    'service_id' => $service->service_id,
+                    'queue_number' => $queueNumber,
+                    'tracking_code' => 'QV-' . $user->user_id . $queueNumber,
+                    'status' => 'waiting',
+                    'category' => 'regular',
+                    'requested_at' => now(),
+                ]);
+            }
+        }
+
+        $this->actingAs($testAdmin)
+            ->post('/kiosk/generate', [
+                'service_id' => $service->service_id,
+                'category' => 'regular',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(3, QueueRequest::where('user_id', $testAdmin->user_id)
+            ->whereIn('status', ['waiting', 'called', 'serving'])
+            ->count());
+
+        $this->actingAs($otherAdmin)
+            ->from('/dashboard')
+            ->post('/kiosk/generate', [
+                'service_id' => $service->service_id,
+                'category' => 'regular',
+            ])
+            ->assertRedirect('/dashboard')
+            ->assertSessionHas('error', 'You can only have up to 2 active tickets at a time.');
+    }
+
     public function test_student_can_cancel_their_own_ticket(): void
     {
         $user = User::factory()->create(['role' => 'student']);
