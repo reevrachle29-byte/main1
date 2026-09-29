@@ -30,9 +30,16 @@ Route::get('/', function () {
 
 Route::get('/kiosk', [QueueController::class, 'showKiosk'])->name('queue.kiosk');
 Route::get('/kiosk/walk-in', [QueueController::class, 'showWalkInKiosk'])->name('queue.kiosk.walkin');
+Route::get('/kiosk/walk-in/{officeId}', [QueueController::class, 'showWalkInKiosk'])
+    ->whereNumber('officeId')
+    ->name('queue.kiosk.walkin.office');
 Route::post('/kiosk/generate', [QueueController::class, 'generateTicket'])
     ->middleware('throttle:ticket-generation')
     ->name('queue.generate');
+Route::post('/kiosk/walk-in/{officeId}/generate', [QueueController::class, 'generateTicket'])
+    ->whereNumber('officeId')
+    ->middleware('throttle:ticket-generation')
+    ->name('queue.kiosk.walkin.generate');
 Route::get('/monitor/{officeId?}', [QueueController::class, 'showDisplayMonitor'])->whereNumber('officeId')->name('queue.monitor');
 
 Route::get('/queue/inquiry', [QueueController::class, 'inquiry'])

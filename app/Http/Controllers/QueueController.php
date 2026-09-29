@@ -22,20 +22,23 @@ class QueueController extends Controller
         return $this->renderKioskPage(false);
     }
 
-    public function showWalkInKiosk()
+    public function showWalkInKiosk(?int $officeId = null)
     {
-        return $this->renderKioskPage(true);
+        return $this->renderKioskPage(true, $officeId);
     }
 
-    protected function renderKioskPage(bool $walkInMode): \Illuminate\Http\Response|\Inertia\Response
+    protected function renderKioskPage(bool $walkInMode, ?int $walkInOfficeId = null): \Illuminate\Http\Response|\Inertia\Response
     {
         $openSessionOfficeIds = QueueSession::where('status', 'open')
             ->pluck('office_id')
             ->toArray();
 
         $offices = Office::where('is_active', true)
+            ->when($walkInMode && $walkInOfficeId, fn ($query) => $query->where('office_id', $walkInOfficeId))
             ->with(['services' => fn ($query) => $query->where('is_active', true)])
             ->get();
+
+        abort_if($walkInOfficeId && $offices->isEmpty(), 404);
 
         $offices->each(function (Office $office) use ($openSessionOfficeIds) {
             $serviceIds = $office->services->pluck('service_id');
@@ -62,10 +65,11 @@ class QueueController extends Controller
         return Inertia::render('Queue/Kiosk', [
             'offices' => $offices,
             'walk_in_mode' => $walkInMode,
+            'walk_in_office_id' => $walkInOfficeId,
         ]);
     }
 
-    public function generateTicket(Request $request)
+    public function generateTicket(Request $request, ?int $walkInOfficeId = null)
     {
         $request->validate([
             'service_id' => 'required|exists:services,service_id',
@@ -75,6 +79,7 @@ class QueueController extends Controller
         $service = Service::with('office')->findOrFail($request->service_id);
 
         abort_unless($service->office?->is_active && $service->is_active, 404);
+        abort_if($walkInOfficeId && (int) $service->office_id !== $walkInOfficeId, 404);
 
         $session = QueueSession::where('office_id', $service->office_id)
             ->where('status', 'open')

@@ -42,6 +42,57 @@ class QueueSafetyTest extends TestCase
         $this->assertDatabaseCount('queue_requests', 0);
     }
 
+    public function test_walk_in_kiosk_is_scoped_to_the_selected_office_without_changing_main_kiosk(): void
+    {
+        $registrar = Office::create(['name' => 'Registrar Office', 'is_active' => true]);
+        $business = Office::create(['name' => 'Business Office', 'is_active' => true]);
+
+        Service::create([
+            'office_id' => $registrar->office_id,
+            'service_name' => 'Transcript Request',
+            'is_active' => true,
+        ]);
+        Service::create([
+            'office_id' => $business->office_id,
+            'service_name' => 'Payment',
+            'is_active' => true,
+        ]);
+
+        $this->get('/kiosk/walk-in/' . $registrar->office_id)
+            ->assertInertia(fn ($page) => $page
+                ->component('Queue/Kiosk')
+                ->where('walk_in_mode', true)
+                ->where('walk_in_office_id', $registrar->office_id)
+                ->has('offices', 1)
+                ->where('offices.0.office_id', $registrar->office_id)
+            );
+
+        $this->get('/kiosk')
+            ->assertInertia(fn ($page) => $page
+                ->component('Queue/Kiosk')
+                ->where('walk_in_mode', false)
+                ->has('offices', 2)
+            );
+    }
+
+    public function test_walk_in_kiosk_cannot_issue_a_ticket_for_another_office(): void
+    {
+        $registrar = Office::create(['name' => 'Registrar Office', 'is_active' => true]);
+        $business = Office::create(['name' => 'Business Office', 'is_active' => true]);
+        $businessService = Service::create([
+            'office_id' => $business->office_id,
+            'service_name' => 'Payment',
+            'is_active' => true,
+        ]);
+
+        $this->post('/kiosk/walk-in/' . $registrar->office_id . '/generate', [
+            'service_id' => $businessService->service_id,
+            'category' => 'regular',
+        ])->assertNotFound();
+
+        $this->assertDatabaseCount('queue_requests', 0);
+    }
+
     public function test_completed_tickets_cannot_be_completed_again(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

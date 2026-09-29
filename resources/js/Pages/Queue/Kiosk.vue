@@ -11,6 +11,10 @@ const props = defineProps({
     walk_in_mode: {
         type: Boolean,
         default: false,
+    },
+    walk_in_office_id: {
+        type: Number,
+        default: null,
     }
 });
 
@@ -87,7 +91,11 @@ const confirmTicketRequest = () => {
     form.service_id = selectedServiceId.value;
     form.category = pendingCategory.value;
 
-    form.post(route('queue.generate'), {
+    const generateRoute = props.walk_in_mode && props.walk_in_office_id
+        ? route('queue.kiosk.walkin.generate', { officeId: props.walk_in_office_id })
+        : route('queue.generate');
+
+    form.post(generateRoute, {
         preserveScroll: true,
         onSuccess: () => {
             form.service_id = null;
@@ -134,12 +142,22 @@ const closeCancelConfirm = () => {
     showCancelConfirm.value = false;
 };
 
-const resetKiosk = () => window.location.assign(route('queue.kiosk'));
+const resetKiosk = () => window.location.assign(
+    props.walk_in_mode && props.walk_in_office_id
+        ? route('queue.kiosk.walkin.office', { officeId: props.walk_in_office_id })
+        : route('queue.kiosk')
+);
 const printTicket = () => window.print();
-const kioskTitle = computed(() => props.walk_in_mode ? 'Walk-in Customer Queue' : 'Digital Ticketing Terminal');
-const kioskSubtitle = computed(() => props.walk_in_mode
-    ? 'Select your service and print your ticket at this kiosk.'
-    : 'Choose the office transaction you need to issue your queue ticket number.');
+const kioskTitle = computed(() => {
+    if (!props.walk_in_mode) return 'Digital Ticketing Terminal';
+    return props.walk_in_office_id ? 'Walk-in Customer Queue' : 'Choose Your Office';
+});
+const kioskSubtitle = computed(() => {
+    if (!props.walk_in_mode) return 'Choose the office transaction you need to issue your queue ticket number.';
+    return props.walk_in_office_id
+        ? 'Select a service and print your ticket at this office.'
+        : 'Select the office where you need service.';
+});
 </script>
 
 <template>
@@ -223,7 +241,11 @@ const kioskSubtitle = computed(() => props.walk_in_mode
                     {{ kioskTitle }}
                 </div>
                 <h2 class="text-4xl sm:text-5xl font-black tracking-tight text-white">
-                    Select a <span class="bg-gradient-to-r from-amber-400 via-teal-300 to-amber-500 bg-clip-text text-transparent">Service</span>
+                    <template v-if="walk_in_mode && !walk_in_office_id">Select an</template>
+                    <template v-else>Select a</template>
+                    <span class="bg-gradient-to-r from-amber-400 via-teal-300 to-amber-500 bg-clip-text text-transparent">
+                        {{ walk_in_mode && !walk_in_office_id ? 'Office' : 'Service' }}
+                    </span>
                 </h2>
                 <p class="text-slate-400 text-sm sm:text-base">
                     {{ kioskSubtitle }}
@@ -231,6 +253,13 @@ const kioskSubtitle = computed(() => props.walk_in_mode
                 <div v-if="walk_in_mode" class="mt-4 inline-flex items-center justify-center rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-amber-300">
                     Walk-in Customers Only
                 </div>
+                <a
+                    v-if="walk_in_mode && walk_in_office_id"
+                    :href="route('queue.kiosk.walkin')"
+                    class="block text-xs font-bold text-amber-300 underline decoration-amber-500/40 underline-offset-4 hover:text-amber-200"
+                >
+                    Change office
+                </a>
             </div>
 
             <div v-if="errorMessage" class="w-full max-w-lg mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-center text-red-400 text-sm font-semibold">
@@ -301,6 +330,23 @@ const kioskSubtitle = computed(() => props.walk_in_mode
             </div>
 
             <!-- Dynamic Offices & Services Grid -->
+            <div v-else-if="walk_in_mode && !walk_in_office_id" class="grid grid-cols-1 lg:grid-cols-2 gap-5 w-full">
+                <a
+                    v-for="office in offices"
+                    :key="office.office_id || office.id"
+                    :href="route('queue.kiosk.walkin.office', { officeId: office.office_id || office.id })"
+                    class="flex min-h-36 items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-6 transition hover:border-amber-500/50 hover:bg-amber-500/5"
+                >
+                    <div>
+                        <h3 class="text-xl font-bold text-white">{{ office.name }}</h3>
+                        <p class="mt-2 text-sm text-slate-400">{{ office.services?.length || 0 }} services</p>
+                    </div>
+                    <span :class="availabilityClass(office.availability_status)" class="rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wider">
+                        {{ office.availability_label }}
+                    </span>
+                </a>
+            </div>
+
             <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full">
                 <div 
                     v-for="office in offices" 
